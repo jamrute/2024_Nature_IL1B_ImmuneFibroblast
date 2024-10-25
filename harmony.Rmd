@@ -1,0 +1,90 @@
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(sctransform)
+library(ggplot2)
+library(harmony)
+library(ArchR)
+library(ggsci)
+library(cowplot)
+library(harmony)
+```
+
+```{r}
+sample <- readRDS("../normalized.rds")
+```
+
+# Add sample Level meta-Data
+```{r}
+SampleInfo<-read.csv("./sample_metadata.csv",stringsAsFactors = FALSE)
+sample$sample<-sub(".*-", "", sample$bc)  
+
+meta<-sample@meta.data
+meta1<-merge(meta, SampleInfo, by.x="sample",by.y="SampleID")
+row.names(meta1)<-meta1$bc
+meta2<-meta1[match(row.names(sample@meta.data),row.names(meta1)),]
+sample@meta.data<-meta2
+```
+
+# Factor Sample Levels
+```{r}
+sample$sample <- factor(sample$sample, levels = c("sample13","sample28","sample32","sample33","sample34","sample41","sample42",
+                                                  "sample4","sample5","sample8","sample39",
+                                                  "sample1","sample2","sample12","sample17","sample27",
+                                                  "sample6","sample7","sample9","sample15","sample29","sample30"), ordered = TRUE)
+```
+
+# Factor Condition
+```{r}
+sample$HF.etiology <- factor(sample$HF.etiology, levels = c("Donor", "ICM/AMI", "ICM", "NICM"), ordered = TRUE)
+```
+
+```{r}
+VlnPlot(object = sample, features = "PC_1", group.by = "sample", pt.size = .0) + NoLegend()
+VlnPlot(object = sample, features = "PC_1", group.by = "HF.etiology", pt.size = .0) + NoLegend()
+```
+
+```{r}
+DefaultAssay(sample) <- "SCT"
+```
+
+```{r}
+sample2 <- RunHarmony(sample, c("sample"), reduction = "sctpca", reduction.save = "harmony_rna", assay.use = "SCT")
+```
+
+```{r}
+VlnPlot(object = sample2, features = "harmonyrna_1", group.by = "sample", pt.size = .0) + NoLegend()
+VlnPlot(object = sample2, features = "harmonyrna_1", group.by = "HF.etiology", pt.size = .0) + NoLegend()
+```
+
+```{r}
+pct <- sample2[["harmony_rna"]]@stdev / sum(sample2[["harmony_rna"]]@stdev) * 100
+# Calculate cumulative percents for each PC
+cumu <- cumsum(pct)
+# Determine which PC exhibits cumulative percent greater than 90% and % variation associated with the PC as less than 5
+n_pcs_to_use_RNA <- which(cumu > 90 & pct < 5)[1]
+n_pcs_to_use_RNA
+```
+
+
+```{r}
+saveRDS(sample2, "./normalized_harmony.rds")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

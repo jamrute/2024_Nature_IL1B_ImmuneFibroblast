@@ -1,0 +1,574 @@
+```{r}
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(SeuratDisk)
+library(ArchR)
+library(Nebulosa)
+```
+
+```{r}
+Convert("./converted_for_seurat/Visium_1_CK279_control_P17.h5ad", dest = "h5seurat", overwrite = TRUE)
+Visium_1_CK279_control_P17 <- LoadH5Seurat("./converted_for_seurat/Visium_1_CK279_control_P17.h5seurat")
+```
+
+```{r}
+Convert("./converted_for_seurat/Visium_7_CK285_IZ_P10.h5ad", dest = "h5seurat", overwrite = TRUE)
+Visium_7_CK285_IZ_P10 <- LoadH5Seurat("./converted_for_seurat/Visium_7_CK285_IZ_P10.h5seurat")
+```
+
+```{r}
+Convert("./converted_for_seurat/Visium_12_CK290_FZ_P14.h5ad", dest = "h5seurat", overwrite = TRUE)
+Visium_12_CK290_FZ_P14 <- LoadH5Seurat("./converted_for_seurat/Visium_12_CK290_FZ_P14.h5seurat")
+```
+
+```{r}
+Convert("./converted_for_seurat/Visium_13_CK291_FZ_P18.h5ad", dest = "h5seurat", overwrite = TRUE)
+Visium_13_CK291_FZ_P18 <- LoadH5Seurat("./converted_for_seurat/Visium_13_CK291_FZ_P18.h5seurat")
+```
+
+```{r}
+Convert("./converted_for_seurat/Visium_19_CK297_GT_IZ_P9_rep2.h5ad", dest = "h5seurat", overwrite = TRUE)
+Visium_19_CK297_GT_IZ_P9_rep2 <- LoadH5Seurat("./converted_for_seurat/Visium_19_CK297_GT_IZ_P9_rep2.h5seurat")
+```
+
+```{r}
+Convert("./converted_for_seurat/Visium_20_CK298_IZ_P15.h5ad", dest = "h5seurat", overwrite = TRUE)
+Visium_20_CK298_IZ_P15 <- LoadH5Seurat("./converted_for_seurat/Visium_20_CK298_IZ_P15.h5seurat")
+```
+
+```{r}
+Convert("./converted_for_seurat/AKK002_157779_IZ_P3.h5ad", dest = "h5seurat", overwrite = TRUE)
+AKK002_157779_IZ_P3 <- LoadH5Seurat("./converted_for_seurat/AKK002_157779_IZ_P3.h5seurat")
+
+Convert("./converted_for_seurat/AKK002_157781_RZ_BZ_P3.h5ad", dest = "h5seurat", overwrite = TRUE)
+AKK002_157781_RZ_BZ_P3 <- LoadH5Seurat("./converted_for_seurat/AKK002_157781_RZ_BZ_P3.h5seurat")
+
+Convert("./converted_for_seurat/AKK002_157782_RZ_P3.h5ad", dest = "h5seurat", overwrite = TRUE)
+AKK002_157782_RZ_P3 <- LoadH5Seurat("./converted_for_seurat/AKK002_157782_RZ_P3.h5seurat")
+```
+
+```{r}
+Visium_1_CK279_control_P17$MI <- "Donor"
+Visium_7_CK285_IZ_P10$MI <- "6d"
+Visium_12_CK290_FZ_P14$MI <- "62d"
+Visium_13_CK291_FZ_P18$MI <- "153d"
+Visium_19_CK297_GT_IZ_P9_rep2$MI <- "2d"
+Visium_20_CK298_IZ_P15$MI <- "11d"
+AKK002_157779_IZ_P3$MI <- "2d"
+AKK002_157781_RZ_BZ_P3$MI <- "2d"
+AKK002_157782_RZ_P3$MI <- "2d"
+
+Visium_1_CK279_control_P17$Loc <- "Donor"
+Visium_7_CK285_IZ_P10$Loc <- "IZ"
+Visium_12_CK290_FZ_P14$Loc <- "FZ"
+Visium_13_CK291_FZ_P18$Loc <- "FZ"
+Visium_19_CK297_GT_IZ_P9_rep2$Loc <- "IZ"
+Visium_20_CK298_IZ_P15$Loc <- "IZ"
+AKK002_157779_IZ_P3$Loc <- "IZ"
+AKK002_157781_RZ_BZ_P3$Loc <- "BZ"
+AKK002_157782_RZ_P3$Loc <- "RZ"
+```
+
+```{r}
+Visium_1_CK279_control_P17 <- SCTransform(Visium_1_CK279_control_P17, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+```
+
+```{r}
+Visium_7_CK285_IZ_P10 <- SCTransform(Visium_7_CK285_IZ_P10, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+```
+
+```{r}
+Visium_12_CK290_FZ_P14 <- SCTransform(Visium_12_CK290_FZ_P14, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+```
+
+```{r}
+Visium_13_CK291_FZ_P18 <- SCTransform(Visium_13_CK291_FZ_P18, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+```
+
+```{r}
+Visium_19_CK297_GT_IZ_P9_rep2 <- SCTransform(Visium_19_CK297_GT_IZ_P9_rep2, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+```
+
+```{r}
+Visium_20_CK298_IZ_P15 <- SCTransform(Visium_20_CK298_IZ_P15, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+```
+
+```{r}
+AKK002_157779_IZ_P3 <- SCTransform(AKK002_157779_IZ_P3, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+
+AKK002_157781_RZ_BZ_P3 <- SCTransform(AKK002_157781_RZ_BZ_P3, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+
+AKK002_157782_RZ_P3 <- SCTransform(AKK002_157782_RZ_P3, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+```
+
+# Ref Map to Human Global
+```{r}
+sample <- readRDS("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary\ Projects/Amgen_ICM_CITEseq/Complete_atlas/annotate/snHF_atlas.rds")
+```
+
+# Visium_1_CK279_control_P17
+```{r}
+anchors <- FindTransferAnchors(
+  reference = sample,
+  query = Visium_1_CK279_control_P17,
+  normalization.method = "SCT",
+  reference.reduction = "harmony",
+  dims = 1:50
+)
+
+predictions <- TransferData(anchorset = anchors, refdata = sample$cell.type, dims = 1:50)
+Visium_1_CK279_control_P17 <- AddMetaData(Visium_1_CK279_control_P17, metadata = predictions)
+```
+
+```{r}
+saveRDS(Visium_1_CK279_control_P17, "./Visium_1_CK279_control_P17_mapped.rds")
+```
+
+# Visium_7_CK285_IZ_P10
+```{r}
+anchors <- FindTransferAnchors(
+  reference = sample,
+  query = Visium_7_CK285_IZ_P10,
+  normalization.method = "SCT",
+  reference.reduction = "harmony",
+  dims = 1:50
+)
+
+predictions <- TransferData(anchorset = anchors, refdata = sample$cell.type, dims = 1:50)
+Visium_7_CK285_IZ_P10 <- AddMetaData(Visium_7_CK285_IZ_P10, metadata = predictions)
+```
+
+```{r}
+saveRDS(Visium_7_CK285_IZ_P10, "./Visium_7_CK285_IZ_P10_mapped.rds")
+```
+
+# Visium_12_CK290_FZ_P14
+```{r}
+anchors <- FindTransferAnchors(
+  reference = sample,
+  query = Visium_12_CK290_FZ_P14,
+  normalization.method = "SCT",
+  reference.reduction = "harmony",
+  dims = 1:50
+)
+```
+
+```{r}
+predictions <- TransferData(anchorset = anchors, refdata = sample$cell.type, dims = 1:50)
+Visium_12_CK290_FZ_P14 <- AddMetaData(Visium_12_CK290_FZ_P14, metadata = predictions)
+```
+# Visium_13_CK291_FZ_P18
+```{r}
+anchors <- FindTransferAnchors(
+  reference = sample,
+  query = Visium_13_CK291_FZ_P18,
+  normalization.method = "SCT",
+  reference.reduction = "harmony",
+  dims = 1:50
+)
+```
+
+```{r}
+predictions <- TransferData(anchorset = anchors, refdata = sample$cell.type, dims = 1:50)
+Visium_13_CK291_FZ_P18 <- AddMetaData(Visium_13_CK291_FZ_P18, metadata = predictions)
+```
+
+```{r}
+DimPlot(Visium_13_CK291_FZ_P18, reduction = 'spatial', group.by = "predicted.id", cols = paletteDiscrete(unique(sample$cell.type), set = "stallion")) + NoLegend()
+```
+
+# Visium_19_CK297_GT_IZ_P9_rep2
+```{r}
+anchors <- FindTransferAnchors(
+  reference = sample,
+  query = Visium_19_CK297_GT_IZ_P9_rep2,
+  normalization.method = "SCT",
+  reference.reduction = "harmony",
+  dims = 1:50
+)
+```
+```{r}
+predictions <- TransferData(anchorset = anchors, refdata = sample$cell.type, dims = 1:50)
+Visium_19_CK297_GT_IZ_P9_rep2 <- AddMetaData(Visium_19_CK297_GT_IZ_P9_rep2, metadata = predictions)
+```
+```{r}
+DimPlot(Visium_19_CK297_GT_IZ_P9_rep2, reduction = 'spatial', group.by = "predicted.id", cols = paletteDiscrete(unique(sample$cell.type), set = "stallion")) + NoLegend()
+```
+
+```{r}
+# create a new assay to store ADT information
+prediction_assay <- CreateAssayObject(counts = t(Visium_19_CK297_GT_IZ_P9_rep2@meta.data[,c("prediction.score.Lymphatic","prediction.score.Pericyte",
+                                           "prediction.score.TNKCells","prediction.score.Fibroblast",
+                                           "prediction.score.Endothelium","prediction.score.Endocardium",
+                                           "prediction.score.Myeloid","prediction.score.SMC",
+                                           "prediction.score.Adipocyte","prediction.score.Cardiomyocyte",
+                                           "prediction.score.Glia","prediction.score.Epicardium",
+                                           "prediction.score.Mast","prediction.score.max")]))
+
+# add this assay to the previously created Seurat object
+Visium_19_CK297_GT_IZ_P9_rep2[["prediction.scores"]] <- prediction_assay
+```
+
+```{r}
+FeaturePlot(Visium_19_CK297_GT_IZ_P9_rep2, reduction = 'spatial', features = "prediction.score.Fibroblast", cols = c("lightgrey", "darkred")) + NoLegend()
+
+FeaturePlot(Visium_19_CK297_GT_IZ_P9_rep2, reduction = 'spatial', features = "prediction.score.Myeloid", cols = c("lightgrey", "darkred")) + NoLegend()
+
+FeaturePlot(Visium_19_CK297_GT_IZ_P9_rep2, reduction = 'spatial', features = "prediction.score.max", cols = c("lightgrey", "darkred")) + NoLegend()
+```
+
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "prediction.scores"
+p_list <- plot_density(Visium_19_CK297_GT_IZ_P9_rep2, c("prediction.score.Myeloid", "prediction.score.Fibroblast"), joint = TRUE, combine = FALSE, reduction = "spatial")
+p_list[[length(p_list)]] + NoLegend()
+```
+
+# Ground State
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("PI16","CCDC80", "FBLN1", "SVEP1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$groundStatefib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "groundStatefib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+# Myofib
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("ACTA2","TAGLN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$myofib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "myofib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+# CCL2/THBS1
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("CCL2","CCL11","THBS1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$CCL2fib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "CCL2fib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+# APOE Fib
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("APOE","AGT","RGS5")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$APOEfib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "APOEfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+# DLK1 Fib
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("DLK1","GPX3")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$DLK1fib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "DLK1fib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+# PTGDS Fib
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("PTGDS","GPC3")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$PTGDSfib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "PTGDSfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+# APOD Fib
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("APOD","IGFBP5")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$APODfib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "APODfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+# GDF15 Fib
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("ATF5","SLC3A2","TRIB3","GDF15")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$GDF15fib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "GDF15fib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+# POSTN/FAP Fib
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("POSTN","COMP","FAP","COL1A1","THBS4","COL3A1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$POSTNfib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "POSTNfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+# IFN
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("ISG15", "MX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$IFNfib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "IFNfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+# PLA2G2A
+```{r}
+DefaultAssay(Visium_19_CK297_GT_IZ_P9_rep2) <- "SCT"
+expdata <- GetAssayData(Visium_19_CK297_GT_IZ_P9_rep2)
+Pop1 <- c("PLA2G2A", "CFD")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+Visium_19_CK297_GT_IZ_P9_rep2@meta.data$IFNfib_z<-z_scores[1,]
+FeaturePlot(object=Visium_19_CK297_GT_IZ_P9_rep2, features = "IFNfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+
+
+
+# Visium_20_CK298_IZ_P15
+```{r}
+anchors <- FindTransferAnchors(
+  reference = sample,
+  query = Visium_20_CK298_IZ_P15,
+  normalization.method = "SCT",
+  reference.reduction = "harmony",
+  dims = 1:50
+)
+```
+```{r}
+predictions <- TransferData(anchorset = anchors, refdata = sample$cell.type, dims = 1:50)
+Visium_20_CK298_IZ_P15 <- AddMetaData(Visium_20_CK298_IZ_P15, metadata = predictions)
+```
+```{r}
+DimPlot(Visium_20_CK298_IZ_P15, reduction = 'spatial', group.by = "predicted.id", cols = paletteDiscrete(unique(sample$cell.type), set = "stallion")) + NoLegend()
+```
+
+```{r}
+# create a new assay to store ADT information
+prediction_assay <- CreateAssayObject(counts = t(Visium_20_CK298_IZ_P15@meta.data[,c("prediction.score.Lymphatic","prediction.score.Pericyte",
+                                           "prediction.score.TNKCells","prediction.score.Fibroblast",
+                                           "prediction.score.Endothelium","prediction.score.Endocardium",
+                                           "prediction.score.Myeloid","prediction.score.SMC",
+                                           "prediction.score.Adipocyte","prediction.score.Cardiomyocyte",
+                                           "prediction.score.Glia","prediction.score.Epicardium",
+                                           "prediction.score.Mast","prediction.score.max")]))
+
+# add this assay to the previously created Seurat object
+Visium_20_CK298_IZ_P15[["prediction.scores"]] <- prediction_assay
+```
+
+```{r}
+FeaturePlot(Visium_20_CK298_IZ_P15, reduction = 'spatial', features = "prediction.score.Fibroblast", cols = c("lightgrey", "darkred")) + NoLegend()
+
+FeaturePlot(Visium_20_CK298_IZ_P15, reduction = 'spatial', features = "prediction.score.Myeloid", cols = c("lightgrey", "darkred")) + NoLegend()
+
+FeaturePlot(Visium_20_CK298_IZ_P15, reduction = 'spatial', features = "prediction.score.TNKCells", cols = c("lightgrey", "darkred")) + NoLegend()
+
+FeaturePlot(Visium_20_CK298_IZ_P15, reduction = 'spatial', features = "prediction.score.max", cols = c("lightgrey", "darkred")) + NoLegend()
+```
+
+```{r}
+DefaultAssay(Visium_20_CK298_IZ_P15) <- "prediction.scores"
+p_list <- plot_density(Visium_20_CK298_IZ_P15, c("prediction.score.Myeloid", "prediction.score.Fibroblast"), joint = TRUE, combine = FALSE, reduction = "spatial")
+p_list[[length(p_list)]] + NoLegend()
+```
+
+```{r}
+DefaultAssay(Visium_20_CK298_IZ_P15) <- "SCT"
+FeatureScatter(Visium_20_CK298_IZ_P15, feature1 = "CD68", feature2 = "FAP", group.by = "predicted.id",cols = paletteDiscrete(unique(sample$cell.type), set = "stallion"), pt.size = 0.2)
+```
+```{r}
+FeatureScatter(Visium_20_CK298_IZ_P15, feature1 = "prediction.score.Myeloid", feature2 = "prediction.score.Fibroblast", group.by = "predicted.id",cols = paletteDiscrete(unique(sample$cell.type), set = "stallion"))
+```
+
+```{r}
+Visium_20_CK298_IZ_P15 <- RunPCA(Visium_20_CK298_IZ_P15, assay = "SCT", verbose = FALSE)
+Visium_20_CK298_IZ_P15 <- FindNeighbors(Visium_20_CK298_IZ_P15, reduction = "pca", dims = 1:30)
+Visium_20_CK298_IZ_P15 <- FindClusters(Visium_20_CK298_IZ_P15, verbose = FALSE, resolution = c(0.2, 0.3, 0.4, 0.5, 0.6), graph.name = "SCT_snn")
+Visium_20_CK298_IZ_P15 <- RunUMAP(Visium_20_CK298_IZ_P15, reduction = "pca", dims = 1:30)
+```
+
+```{r}
+DimPlot(Visium_20_CK298_IZ_P15, reduction = 'umap', group.by = "predicted.id", cols = paletteDiscrete(unique(sample$cell.type), set = "stallion"))
+
+DimPlot(Visium_20_CK298_IZ_P15, reduction = 'umap', group.by = "SCT_snn_res.0.5", cols = paletteDiscrete(unique(Visium_20_CK298_IZ_P15$SCT_snn_res.0.5), set = "stallion"))
+```
+
+```{r}
+DefaultAssay(Visium_20_CK298_IZ_P15) <- "prediction.scores"
+p_list <- plot_density(Visium_20_CK298_IZ_P15, c("prediction.score.Myeloid", "prediction.score.Fibroblast"), joint = TRUE, combine = FALSE, reduction = "umap")
+p_list[[length(p_list)]] + NoLegend()
+```
+
+```{r}
+DefaultAssay(Visium_20_CK298_IZ_P15) <- "SCT"
+FeaturePlot(Visium_20_CK298_IZ_P15, reduction = 'umap', features = "FAP") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1))
+plot_density(Visium_20_CK298_IZ_P15, c("FAP"), reduction = "umap")
+```
+
+```{r}
+DefaultAssay(Visium_20_CK298_IZ_P15) <- "SCT"
+p_list <- plot_density(Visium_20_CK298_IZ_P15, c("FAP", "CD68"), joint = TRUE, combine = FALSE, reduction = "umap")
+p_list[[length(p_list)]] + NoLegend()
+```
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,188 @@
+```{r}
+library(dsb)
+library(Seurat) 
+library(tidyverse) 
+library(ggplot2)
+library(cowplot)
+```
+
+```{r}
+#Cell Ranger provides a function cellranger aggr that will combine multiple samples into a single matrix file. However, when processing data in R and Seurat this is unnecessary and we can aggregate them in R.
+
+## Dataset for analysis
+dataset_loc <- "/gau/isilon/int/xluo/Project/WashU.Kory.SCRNASeq/citeseq.all/Myo"
+ids <- c("sample13","sample28","sample32","sample33","sample34","sample39","sample41","sample4","sample5","sample8","sample42","sample1", "sample2","sample12","sample17","sample27","sample6","sample7","sample9","sample15","sample29","sample30")
+
+raw.GE.data <- sapply(ids, function(i){
+  raw.GE <- Read10X(file.path(dataset_loc,i,"outs/raw_feature_bc_matrix"))[["Gene Expression"]]
+  colnames(raw.GE) <- paste(sapply(strsplit(colnames(raw.GE),split="-"),'[[',1L),i,sep="-")
+  raw.GE
+})
+
+raw.GEX<- do.call("cbind", raw.GE.data)
+
+raw.CS.data <- sapply(ids, function(i){
+  raw.CS<- Read10X(file.path(dataset_loc,i,"outs/raw_feature_bc_matrix"))[["Antibody Capture"]]
+  colnames(raw.CS) <- paste(sapply(strsplit(colnames(raw.CS),split="-"),'[[',1L),i,sep="-")
+  rownames(x = raw.CS) <- sub("\\.1.*", "", rownames(raw.CS))
+ raw.CS
+})
+
+raw.ADT <- do.call("cbind", raw.CS.data)
+
+cells.GE.data <- sapply(ids, function(i){
+  cells.GE <- Read10X(file.path(dataset_loc,i,"outs/filtered_feature_bc_matrix"))[["Gene Expression"]]
+  colnames(cells.GE) <- paste(sapply(strsplit(colnames(cells.GE),split="-"),'[[',1L),i,sep="-")
+  cells.GE
+})
+
+cells.GEX<- do.call("cbind", cells.GE.data)
+
+cells.CS.data <- sapply(ids, function(i){
+  cells.CS<- Read10X(file.path(dataset_loc,i,"outs/filtered_feature_bc_matrix"))[["Antibody Capture"]]
+  colnames(cells.CS) <- paste(sapply(strsplit(colnames(cells.CS),split="-"),'[[',1L),i,sep="-")
+  rownames(x = cells.CS) <- sub("\\.1.*", "", rownames(cells.CS))
+ cells.CS
+})
+
+cells.ADT <- do.call("cbind", cells.CS.data)
+
+
+# define a vector of cell-containing barcodes and remove them from unfiltered data 
+stained_cells = colnames(cells.GEX)
+background = setdiff(colnames(raw.GEX), stained_cells)
+
+# split the data into separate matrices per assay 
+prot = raw.ADT
+rna = raw.GEX
+
+# create metadata of droplet QC stats used in standard scRNAseq processing
+rna_size = log10(Matrix::colSums(rna))
+prot_size = log10(Matrix::colSums(prot))
+ngene = Matrix::colSums(rna > 0)
+mtgene = grep(pattern = "^MT-", rownames(rna), value = TRUE)
+propmt = Matrix::colSums(rna[mtgene, ]) / Matrix::colSums(rna)
+md = as.data.frame(cbind(propmt, rna_size, ngene, prot_size))
+md$bc = rownames(md)
+md$droplet_class = ifelse(test = md$bc %in% stained_cells, yes = 'cell', no = 'background')
+
+# filter barcodes to only include those with data for both assays 
+md = md %>% dplyr::filter(rna_size > 0 & prot_size > 0 )
+
+```
+
+#Step 2 Quality control on cell-containing and background droplets
+#The plot below shows the number of detected genes vs the protein library size for cells vs background drops. 
+```{r}
+ggplot(md, aes(x = log10(ngene), y = prot_size )) +
+  theme_bw() + 
+  geom_bin2d(bins = 300) + 
+  scale_fill_viridis_c(option = "C") + 
+  facet_wrap(~droplet_class) 
+```
+
+#Cells QC and filter cells based on thresholds calculated from quality control metrics 
+```{r}
+cellmd = md %>% filter(droplet_class == 'cell')
+plot_aes = list(theme_bw(), geom_point(shape = 21 , stroke = 0, size = 0.7), scale_fill_viridis_c(option = "C"))
+p1 = ggplot(cellmd, aes(x = rna_size )) + geom_histogram(bins = 50) + theme_bw() + xlab("log10 RNA library size")
+p2 = ggplot(cellmd, aes(x = propmt)) + geom_histogram(bins = 50) + theme_bw() + xlab("mitochondrial read proportion")
+p3 = ggplot(cellmd, aes(x = log10(ngene), y = rna_size, fill = propmt )) + plot_aes
+p4 = ggplot(cellmd, aes(x = ngene, y = prot_size, fill = propmt )) + plot_aes
+p1+p2+p3+p4
+```
+
+```{r}
+# calculate statistical thresholds for droplet filtering. 
+rna_size_min = median(cellmd$rna_size) - (3*mad(cellmd$rna_size))
+rna_size_max = median(cellmd$rna_size) + (3*mad(cellmd$rna_size))
+prot_size_min = median(cellmd$prot_size) - (3*mad(cellmd$prot_size))
+prot_size_max = median(cellmd$prot_size) + (3*mad(cellmd$prot_size))
+
+# filter rows based on droplet qualty control metrics
+positive_cells = cellmd[
+    cellmd$prot_size > prot_size_min & 
+    cellmd$prot_size < prot_size_max & 
+    cellmd$propmt < 0.14 &  
+    cellmd$rna_size > rna_size_min & 
+    cellmd$rna_size < rna_size_max, ]$bc
+cells_mtx_rawprot = as.matrix(prot[ , positive_cells])
+
+```
+
+
+#Sanity check: are the number of cells passing QC in line with the expected recovery from the experiment?
+```{r}
+length(positive_cells)
+```
+
+#We also filter background droplets to remove potential spurious cells ( our background droplet didn't separate as well from the postive cells as in the dsb method paper, used representative background cells not all background cells to save computing time)
+```{r}
+# define a vector of background droplet barcodes based on protein library size and mRNA content
+background_drops = md[md$prot_size > 1.5 & md$prot_size < 2 & md$ngene < 100, ]$bc
+negative_mtx_rawprot = as.matrix(prot[ , background_drops])
+
+```
+
+#Optional step; remove proteins without staining
+#While dsb will handle noisy proteins, some proteins in an experiment may not work for bioinformatic reasons or may target a very rare cell #population that was absent in the experiment. This is especially true as panels increase in size. Proteins without counts on the stained cells #should be removed prior to normalization.I did the calculation to get an idea, but haven't removed any protein, since it is not a necessary step
+```{r}
+# calculate quantiles of the raw protein matrix 
+d1 = data.frame(pmax = apply(cells_mtx_rawprot, 1, max)) %>% 
+  rownames_to_column('prot') %>% arrange(pmax) %>% head() 
+```
+
+#Step 3 Normalize protein data with the DSBNormalizeProtein Function
+#For data with isotype control proteins, set denoise.counts = TRUE and use.isotype.control = TRUE and provide a vector containing names of isotype control proteins (the rownames of the protein matrix that are isotype controls). For data without isotype controls, see the vignette section Using dsb with data lacking isotype controls.
+
+```{r}
+#normalize protein data for the cell containing droplets with the dsb method. 
+dsb_norm_prot = DSBNormalizeProtein(
+  cell_protein_matrix = cells_mtx_rawprot, 
+  empty_drop_matrix = negative_mtx_rawprot, 
+  denoise.counts = TRUE, 
+  use.isotype.control = TRUE, 
+  isotype.control.name.vec = rownames(cells_mtx_rawprot)[c(150,181,220:222,242:245)] 
+  )
+```
+
+#The function returns a matrix of normalized protein values which can be integrated with seurat.
+#optional QC step Denoising can result in very small negative values for a protein on just a handful of cells which can impact the range of #normalized values returned by dsb. Very negative values correspond to very low expression and it can be helpful to convert all dsb normalized #values < -10 to 0 for interpretation / visualization purposes. (see FAQ). Again this is not always a necessary step. We did it here.
+```{r}
+dsb_norm_prot = apply(dsb_norm_prot, 2, function(x){ ifelse(test = x < -10, yes = 0, no = x)}) 
+
+```
+
+#Integrating dsb with Seurat
+```{r}
+# filter raw protein, RNA and metadata to only include cell-containing droplets 
+cells_rna = rna[ ,positive_cells]
+md2 = md[positive_cells, ]
+
+# create Seurat object !note: min.cells is a gene filter, not a cell filter
+s = Seurat::CreateSeuratObject(counts = cells_rna, meta.data = md2, 
+                               assay = "RNA", min.cells = 20)
+
+# add dsb normalized matrix "dsb_norm_prot" to the "CITE" assay data slot
+rownames(dsb_norm_prot) <- paste0("CITE_", rownames(dsb_norm_prot))
+s[["CITE"]] = Seurat::CreateAssayObject(data = dsb_norm_prot)
+```
+
+```{r}
+raw.ADT1<-raw.ADT[,match(colnames(s),colnames(raw.ADT))]
+s[["ADT"]] = Seurat::CreateAssayObject(counts = raw.ADT1)
+```
+
+This object can be used in downstream analysis using Seurat (note the data should not be further normalized with CLR after adding dsb values). to distinguish from raw or CLR normalized ADT reads, I create dsb normalized data an draw data as a separate assay "CITE", the adt reads are CITE-genesymbol for the protein tag.
+```{r}
+rownames(raw.ADT) <- paste0("CITE-", rownames(raw.ADT))
+raw.ADT1<-raw.ADT[,match(colnames(s),colnames(raw.ADT))]
+```
+
+```{r}
+s@assays$CITE@counts<-raw.ADT1 # add raw counts before dsb normalization to assay "CITE"
+```
+
+```{r}
+saveRDS(s,"preprocessed.myo.22samples.rds") # dsbnormalized data
+```

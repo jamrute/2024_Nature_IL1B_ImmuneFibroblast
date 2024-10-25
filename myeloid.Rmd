@@ -1,0 +1,1280 @@
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(sctransform)
+library(ggplot2)
+library(harmony)
+library(ArchR)
+library(ggsci)
+#library(SeuratDisk)
+library(harmony)
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(dplyr)
+library(sctransform)
+library(pheatmap)
+library(Matrix)
+library(RColorBrewer)
+library(scales)
+library(data.table)
+library(stats)
+library("Nebulosa")
+library(ggsci)
+library(ArchR)
+library(biomaRt)
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(sctransform)
+library(ggplot2)
+library(pheatmap)
+library(Seurat)
+library(ggplot2)
+library(Matrix)
+library(RColorBrewer)
+library(dplyr)
+library(scales)
+library(data.table)
+library(stats)
+library("Nebulosa")
+
+```
+
+```{r}
+myeloid_harmony <- readRDS("../iteration5/human_myeloid.rds")
+```
+
+```{r}
+myeloid_harmony <- FindClusters(myeloid_harmony, graph.name = "SCT_snn", algorithm = 4, resolution = c(0.2), verbose = FALSE)
+```
+
+```{r}
+DimPlot(myeloid_harmony, reduction = 'umap', group.by = 'SCT_snn_res.0.2',label.size = 4, 
+        cols = paletteDiscrete(unique(myeloid_harmony$SCT_snn_res.0.2), set = "stallion"),label=TRUE)
+```
+
+# Anntotate the Global Clusters
+```{r}
+fun <- function(x) {
+  if (x == "0") {"Resident Mac"} 
+  else if (x == "1") {"Inflammatory Mac"}
+  else if (x == "2") {"Classical Monocyte"}
+  else if (x == "3") {"TREM2 Mac"}
+  else if (x == "4") {"Inflammatory Mac"}
+  else if (x == "5") {"cDC2"}
+  else if (x == "6") {"TREM2 Mac"}
+  else if (x == "7") {"Non Classical Monocyte"}
+  else if (x == "8") {"Resident Mac"}
+  else if (x == "9") {"IFN II"}
+  else if (x == "10") {"TREM2 Mac"}
+  else if (x == "11") {"KLF2/KLF4 Mac"}
+  else if (x == "12") {"Resident Mac"}
+  else if (x == "13") {"Resident Mac"}
+  else if (x == "14") {"IFN I"}
+  else if (x == "15") {"cDC1"}
+  else if (x == "16") {"cDC2"}
+}
+
+myeloid_harmony$cell_type <- mapply(fun, myeloid_harmony$SCT_snn_res.0.5)
+
+fun <- function(x) {
+  if (x == "0") {"Resident 1"} 
+  else if (x == "1") {"Inflam 1 (CCL20)"}
+  else if (x == "2") {"Classical Monocyte"}
+  else if (x == "3") {"TREM2 (SPP1)"}
+  else if (x == "4") {"Inflam 2 (CCL4)"}
+  else if (x == "5") {"cDC2 (MHC2 Hi)"}
+  else if (x == "6") {"TREM2 (APOE)"}
+  else if (x == "7") {"Non Classical Monocyte"}
+  else if (x == "8") {"Resident 3 (CCL18)"}
+  else if (x == "9") {"IFN II"}
+  else if (x == "10") {"TREM2 (FN1)"}
+  else if (x == "11") {"KLF2/KLF4 Mac"}
+  else if (x == "12") {"Resident 4 (HMOX1, CCL2)"}
+  else if (x == "13") {"Resident 2 (FCGBP)"}
+  else if (x == "14") {"IFN I"}
+  else if (x == "15") {"cDC1"}
+  else if (x == "16") {"cDC2 (CCl17)"}
+}
+
+myeloid_harmony$cell_state <- mapply(fun, myeloid_harmony$SCT_snn_res.0.5)
+```
+
+# Factor CellType
+```{r}
+myeloid_harmony <- readRDS("./human_myeloid_final.rds")
+```
+
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+DotPlot(myeloid_harmony, features = c("CCR2","IL1B","IRAK1","IRAK2","IRAK3","IRAK4"), group.by = "annotation.0.1", col.min = 0, col.max = 2) + RotatedAxis()
+```
+
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+FeaturePlot(myeloid_harmony, reduction = 'umap', features = "OLR1", raster=FALSE)
+```
+
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+FeaturePlot(myeloid_harmony, reduction = 'umap', features = "OLR1", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1)) 
+```
+
+```{r}
+FeaturePlot(myeloid_harmony, reduction = 'umap', features = "CMKLR1", raster=FALSE, split.by = "HF.etiology")
+```
+
+
+```{r}
+Idents(myeloid_harmony) <- "cell_type"
+myeloid_harmony$cell_type <- factor(myeloid_harmony$cell_type, levels = c("Resident Mac", 
+                                                                          "IFN I","IFN II",
+                                                                            "TREM2 Mac",
+                                                                            "Inflammatory Mac", "KLF2/KLF4 Mac",
+                                                                            "Classical Monocyte","Non Classical Monocyte",
+                                                                            "cDC1", "cDC2"), ordered = TRUE)
+
+Idents(myeloid_harmony) <- "cell_state"
+myeloid_harmony$cell_state <- factor(myeloid_harmony$cell_state, levels = c("Resident 1","Resident 2 (FCGBP)","Resident 3 (CCL18)","Resident 4 (HMOX1, CCL2)",
+                                                                            "IFN I","IFN II",
+                                                                      "TREM2 (SPP1)","TREM2 (APOE)","TREM2 (FN1)",
+                                                                      "Inflam 1 (CCL20)","Inflam 2 (CCL4)","KLF2/KLF4 Mac",
+                                                                      "Classical Monocyte","Non Classical Monocyte",
+                                                                      "cDC1","cDC2 (CCl17)","cDC2 (MHC2 Hi)"), ordered = TRUE)
+
+cluster_cols <- c("#466f9d", "#91b3d7", "#3896c4", "#a0d4ee",
+                  "#4e9f50", "#87d180",
+                  "#b10318", "#d82526", "#f26c64",
+                  "#8074a8", "#c6c1f0", "#9b93c9",
+                  "#9c9290", "#c5bfbe",
+                  "#ffdd71", "#ffc156", "#dba13a")
+
+names(cluster_cols) <- c("Resident 1","Resident 2 (FCGBP)","Resident 3 (CCL18)","Resident 4 (HMOX1, CCL2)",
+                         "IFN I","IFN II",
+                         "TREM2 (SPP1)","TREM2 (APOE)","TREM2 (FN1)",
+                         "Inflam 1 (CCL20)","Inflam 2 (CCL4)","KLF2/KLF4 Mac",
+                         "Classical Monocyte","Non Classical Monocyte",
+                         "cDC1","cDC2 (CCl17)","cDC2 (MHC2 Hi)")
+```
+
+```{r}
+VlnPlot(myeloid_harmony, features = c("SLC7A5","SLC7A8","SLC43A1","SLC43A2","SLC3A2","SLC38A9"), group.by = "cell_type", split.by = "HF.etiology", stack = TRUE) + RotatedAxis()
+```
+
+
+```{r}
+DimPlot(myeloid_harmony, reduction = 'umap', group.by = 'cell_state',label.size = 4, cols = cluster_cols, label=FALSE)
+```
+
+```{r}
+ggplot(myeloid_harmony@meta.data, aes(x=sample, fill=cell_state)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) +  scale_fill_manual(values=as.vector(cluster_cols)) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+ggplot(myeloid_harmony@meta.data, aes(x=HF.etiology, fill=cell_state)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) +  scale_fill_manual(values=as.vector(cluster_cols)) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+ggplot(myeloid_harmony@meta.data, aes(x=time.since.last.ischemic.event, fill=cell_state)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) +  scale_fill_manual(values=as.vector(cluster_cols)) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+Idents(myeloid_harmony) <- "HF.etiology"
+ami <- subset(myeloid_harmony, idents = "AMI")
+
+fun <- function(x) {
+  if (x == "2 mo") {"1week-3mo"} 
+  else if (x == "3 mo") {"1week-3mo"}
+  else if (x == "4 days ") {"<1week"}
+  else if (x == "7 days ") {"<1week"}
+}
+ami$MI.time.category <- mapply(fun, ami$time.since.last.ischemic.event)
+```
+
+```{r}
+ggplot(ami@meta.data, aes(x=MI.time.category, fill=cell_state)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) +  scale_fill_manual(values=as.vector(cluster_cols)) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+myeloid_harmony$HF.etiology2 <- as.character(myeloid_harmony$HF.etiology) 
+myeloid_harmony$time.since.last.ischemic.event <- as.character(myeloid_harmony$time.since.last.ischemic.event) 
+```
+
+```{r}
+SaveH5Seurat(myeloid_harmony, filename = "./human_myeloid_final.h5Seurat")
+```
+
+```{r}
+Convert("./human_myeloid_final.h5Seurat", dest = "h5ad")
+```
+
+```{r}
+DefaultAssay(myeloid_harmony) <- 'SCT'
+Idents(myeloid_harmony) <- "cell_type"
+rna.rnamarkers <- FindAllMarkers(myeloid_harmony, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_GEX_cell_type.csv", quote = FALSE)
+```
+
+```{r}
+rna.rnamarkers %>%
+    group_by(cluster) %>%
+    top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(myeloid_harmony, features = top10$gene) + NoLegend() + scale_fill_gradientn(colours=paletteContinuous("solarExtra"))
+```
+
+```{r}
+DefaultAssay(myeloid_harmony) <- 'SCT'
+Idents(myeloid_harmony) <- "cell_state"
+rna.rnamarkers <- FindAllMarkers(myeloid_harmony, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_GEX_cell_state.csv", quote = FALSE)
+```
+
+```{r}
+DefaultAssay(myeloid_harmony) <- 'CITE'
+Idents(myeloid_harmony) <- "cell_state"
+rna.rnamarkers <- FindAllMarkers(myeloid_harmony, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_CITE_cell_state.csv", quote = FALSE)
+```
+
+```{r}
+rna.rnamarkers %>%
+    group_by(cluster) %>%
+    top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(myeloid_harmony, features = top10$gene, assay = "SCT", 
+          group.colors = paletteDiscrete(unique(myeloid_harmony$cell_state), set = "stallion"), size = 2, angle = 90) + NoLegend() + scale_fill_gradientn(colours=paletteContinuous("solarExtra"))+ 
+    theme(text = element_text(size = 5))
+
+```
+
+# Create heatmaps for GEX
+```{r}
+genes <- c("LYVE1","MRC1","SIGLEC1","F13A1","CD163","FOLR2",
+           "FCGBP","IGSF21",
+           "CCL18","CCL13",
+           "CCL2", "HMOX1",
+           "ISG15", "IFIT1",
+           "CXCL9", "MT2A",
+           "TREM2",
+           "SPP1", "FABP4",
+           "APOE", "APOC1",
+           "FN1","S100A10",
+           "IL1B",
+           "CCL20", "EREG",
+           "CCL4","CCL3",
+           "KLF2", "KLF4",
+           "S100A8","S100A9","PLAUR","CD14",
+           "LST1","LILRA5","RIPOR2","TCF7L2",
+           "CLEC9A","XCR1",
+           "CD1C","CLEC10A","FCER1A",
+           "CCR7","CCL17",
+           "HLA-DQA1", "HLA-DPB1")
+
+DotPlot(myeloid_harmony, features = unique(genes), group.by = "cell_state", col.min=0, cols = c("lightgrey", "red")) + RotatedAxis()
+```
+
+# Create feature plots for cluster specific z-scores
+
+# Resident1
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("SELENOP","LYVE1","FOLR2","SLC40A1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$Resident1_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "Resident1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+# Resident2
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("FCGBP","A2M")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$Resident2_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "Resident2_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# Resident3
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("CCL18","LGMN","CCL13")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$Resident3_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "Resident3_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# Resident4
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("CCL2","CTSL","HMOX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$Resident4_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "Resident4_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+# IFN1
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("ISG15","IFIT1","IFIT2","MX1","IFI6","IFIT3","IFI44L","CXCL10")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$IFN1_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "IFN1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# IFN2
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("CXCL9","MT2A","MT1G","MT1X","CXCL10","MT1H","MT1E")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$IFN2_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "IFN2_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# TREM2:SPP1
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("SPP1","FABP4","FABP5","CCL2","LPL")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$TREM2SPP1_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "TREM2SPP1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# TREM2:APOE
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("APOE","APOC1","C3","GPNMB","CCL18")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$TREM2APOE_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "TREM2APOE_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# TREM2:FN1
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("FN1","CRIP1","VMO1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$TREM2FN1_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "TREM2FN1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# Inflam1
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("CCL20","EREG","IL1B","CXCL5","G0S2","NLRP3","NFKBIA","IL1A")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$Inflam1_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "Inflam1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# Inflam2
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("CCL4L2","CCL3L1","CCL4","CCL3","TNF","EGR1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$Inflam2_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "Inflam2_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# EA Macs
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("HSPA1B","HSPH1","DNAJB1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$EA_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "EA_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# Classical mono
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("S100A8","S100A9","S100A12","SELL","PLAC8")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$CMono_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "CMono_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+# NC mono
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("SMIM25","TCF7L2","RIPOR2","APOBEC3A","PLAC8")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$NCMono_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "NCMono_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+# cDC1
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("S100B","CLEC9A","CPNE3","IDO1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$cDC1_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "cDC1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# cDC2:CCL17
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("CCL17","IL7R","CCL22","CCR7")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$cDC2_CCL17_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "cDC2_CCL17_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+# cDC2:MHC Hi
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("FCER1A","CD1C","HLA-DQA1","CD1E","CLEC10A")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$cDC2_MHC_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "cDC2_MHC_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+```{r}
+aggregate(myeloid_harmony@meta.data[,c("IFN1_z")], list(myeloid_harmony@meta.data$sample), mean)
+```
+
+# Pathway analysis across clusters
+```{r}
+library(clusterProfiler)
+library(DOSE)
+library(enrichplot)
+library(ReactomePA)
+library(ggplot2)
+```
+
+```{r}
+d <- read.csv("./DE_GEX_cell_state.csv")
+d <- filter(d, avg_log2FC > 0.58)
+d <- filter(d, p_val_adj < 0.05)
+d_new <- d[c("gene", "cluster")]
+```
+
+```{r}
+eg <- bitr(as.character(d_new$gene), fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+d_new <- filter(d_new, gene %in% eg$SYMBOL)
+d_new_enterzID <- merge(d_new, eg, by.x = "gene", by.y = "SYMBOL")
+d_new_enterzID <- d_new_enterzID[c("ENTREZID", "cluster")]
+geneList <- unstack(d_new_enterzID)
+geneList
+```
+
+```{r}
+ck <- compareCluster(geneCluster = geneList, fun = enrichPathway)
+ck <- setReadable(ck, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+head(ck) 
+```
+
+```{r}
+dotplot(ck, font.size = 8) + theme(axis.text.x=element_text(angle=90, hjust=1))
+```
+
+
+# Functional Gene Set Scores: Inflammatory
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("CXCL3","CXCL5","CCL20","CXCL8","SPP1","CXCL2","CCL3","CXCL1","CCL4","CCL3L1","IL1B","NFKBIZ","CCL4L2","NFKBIA","FOSB")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$inflammatory_GS_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "inflammatory_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+```{r}
+aggregate(myeloid_harmony@meta.data[,c("inflammatory_GS_z")], list(myeloid_harmony@meta.data$sample), mean)
+```
+
+
+# Functional Gene Set Scores: Resident
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("MRC1", "LYVE1", "SIGLEC1", "F13A1", "CD163")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$resident_GS_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "resident_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# Functional Gene Set Scores: Antigen Presentation
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("HLA-DQA1","CD74","HLA-DRB1","HLA-DPA1","HLA-DPB1","HLA-DRA","HLA-DQB1","HLA-DMA","HLA-DQA2","HLA-DMB","HLA-DOA","HLA-C","HLA-E","HLA-A")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$antigenPresent_GS_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "antigenPresent_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# Functional Gene Set Scores: IFN1
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("ISG15","IFIT1","IFIT2","MX1","IFI6","IFIT3","IFI44L","CXCL10","MX2","LY6E")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$IFN1_GS_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "IFN1_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+# Functional Gene Set Scores: IFN2
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+expdata <- GetAssayData(myeloid_harmony)
+Pop1 <- c("CXCL9","MT2A","MT1G","MT1X","CXCL10","MT1H","MT1E","GBP1","PSME2","CXCL11")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+myeloid_harmony@meta.data$IFN2_GS_z<-z_scores[1,]
+FeaturePlot(object=myeloid_harmony, features = "IFN2_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+```{r}
+Idents(myeloid_harmony) <- "HF.etiology"
+donor <- subset(myeloid_harmony, idents = "Donor")
+ami <- subset(myeloid_harmony, idents = "AMI")
+icm <- subset(myeloid_harmony, idents = "ICM")
+nicm <- subset(myeloid_harmony, idents = "NICM")
+```
+
+# Inflam Score Split by HF
+```{r}
+FeaturePlot(object=donor, features = "inflammatory_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+
+FeaturePlot(object=ami, features = "inflammatory_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+
+FeaturePlot(object=icm, features = "inflammatory_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+
+FeaturePlot(object=nicm, features = "inflammatory_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+```{r}
+FeaturePlot(object=donor, features = "resident_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+
+FeaturePlot(object=ami, features = "resident_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+
+FeaturePlot(object=icm, features = "resident_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+
+FeaturePlot(object=nicm, features = "resident_GS_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+```{r}
+VlnPlot(myeloid_harmony, features = c("resident_GS_z"), group.by = "cell_state", pt.size=0, cols=paletteDiscrete(unique(myeloid_harmony$cell_state), set = "stallion"), sort = TRUE) + NoLegend()
+
+```
+
+```{r}
+write.csv(myeloid_harmony@meta.data, file ="./human_myeloid_meta.csv", quote = TRUE)
+```
+
+# Create feature plots
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+
+FeaturePlot(myeloid_harmony, reduction = 'umap', features = "TREM2") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,2)) 
+```
+
+```{r}
+DefaultAssay(myeloid_harmony) <- "CITE"
+FeaturePlot(myeloid_harmony, reduction = 'umap', features = "CITE-CCR2") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,20))
+```
+
+```{r}
+p_list <- plot_density(myeloid_harmony, c("CITE-CCR2","CITE-TREM1"), joint = TRUE, combine = FALSE)
+p_list[[length(p_list)]]
+```
+
+
+```{r}
+DotPlot(myeloid_harmony, features = "IL1B", group.by = "cell_type",col.min=0, cols = c("lightgrey", "red")) + RotatedAxis()
+```
+
+#######################################################################################################################################
+# Palantir Mono
+```{r}
+Idents(myeloid_harmony) <- "cell_state"
+levels(myeloid_harmony)
+```
+
+```{r}
+myeloid_harmony_mono <- subset(myeloid_harmony, idents = c("IFN II","TREM2 (SPP1)","TREM2 (APOE)","TREM2 (FN1)","Inflam 1 (CCL20)","Inflam 2 (CCL4)","KLF2/KLF4 Mac","Classical Monocyte","Non Classical Monocyte","cDC1","cDC2 (CCl17)","cDC2 (MHC2 Hi)"))
+```
+
+```{r}
+# Save the normalized SCT matrix
+write.csv(as.matrix(myeloid_harmony_mono[["SCT"]]@scale.data), 
+          file = "./panels/palantir_mono/human_myeloid_SCT_normalized.txt", quote = FALSE)
+
+# Save the meta data
+write.csv(myeloid_harmony_mono@meta.data, file = "./panels/palantir_mono/human_myeloid_meta.csv", quote = TRUE)
+```
+
+```{r}
+myeloid_meta <- read.csv2('./panels/palantir_all/palantir_meta_data.csv', header=TRUE, sep=',', row.names = 1)
+Myeloid_2 <- AddMetaData(myeloid_harmony, myeloid_meta)
+
+Myeloid_2@meta.data$pseudotime <- as.numeric(as.character(Myeloid_2@meta.data$pseudotime))
+Myeloid_2@meta.data$entropy <- as.numeric(as.character(Myeloid_2@meta.data$entropy))
+```
+
+```{r}
+fdl <- read.csv2('./panels/palantir_all/fdl.csv', header=TRUE, sep=',', row.names = 1)
+fdl$x <- as.double(fdl$x)
+fdl$y <- as.double(fdl$y)
+colnames(fdl) <- paste0("FDL_", 1:2)
+Myeloid_2[["fdl"]] <- CreateDimReducObject(embeddings = as.matrix(fdl), key = "FDL_")
+```
+
+```{r}
+FeaturePlot(Myeloid_2, reduction = "fdl", features = c("pseudotime"))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,0.75)) 
+
+FeaturePlot(Myeloid_2, reduction = "fdl", features = c("entropy"))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,1.5)) 
+```
+
+```{r}
+DimPlot(Myeloid_2, reduction = 'fdl', group.by = 'cell_state',label.size = 4, cols = cluster_cols, label=FALSE) + NoLegend()
+```
+
+```{r}
+myeloid_meta <- data.frame(myeloid_meta)
+myeloid_meta
+```
+
+```{r}
+myeloid_meta$pseudotime <- as.numeric(myeloid_meta$pseudotime)
+myeloid_meta$entropy <- as.numeric(myeloid_meta$entropy)
+
+myeloid_meta$cDC1 <- as.numeric(myeloid_meta$cDC1)
+myeloid_meta$cDC2..MHC2.Hi. <- as.numeric(myeloid_meta$cDC2..MHC2.Hi.)
+myeloid_meta$Non.Classical.Monocyte <- as.numeric(myeloid_meta$Non.Classical.Monocyte)
+myeloid_meta$TREM2..APOE. <- as.numeric(myeloid_meta$TREM2..APOE.)
+myeloid_meta$IFN.II <- as.numeric(myeloid_meta$IFN.II)
+myeloid_meta$ClusterName <- as.character(myeloid_meta$ClusterName)
+Myeloid_2 <- AddMetaData(myeloid_harmony, myeloid_meta)
+```
+
+```{r}
+FeaturePlot(Myeloid_2, reduction = "umap", features = c("TREM2..APOE."))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,0.5)) 
+
+FeaturePlot(Myeloid_2, reduction = "umap", features = c("IFN.II"))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,0.4)) 
+```
+
+```{r}
+ggplot(myeloid_meta, aes(x=pseudotime, y=TREM2..APOE., color=ClusterName)) + geom_point(size=1, alpha=1) + scale_color_manual(values=paletteDiscrete(unique(myeloid_harmony$cell_state), set = "stallion")) + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+ggplot(myeloid_meta, aes(x=pseudotime, y=IFN.II, color=ClusterName)) + geom_point(size=1, alpha=1) + scale_color_manual(values=paletteDiscrete(unique(myeloid_harmony$cell_state), set = "stallion")) + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+ggplot(myeloid_meta, aes(x=pseudotime, y=cDC2..MHC2.Hi., color=ClusterName)) + geom_point(size=1, alpha=1) + scale_color_manual(values=paletteDiscrete(unique(myeloid_harmony$cell_state), set = "stallion")) + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+```
+
+```{r}
+ggplot(myeloid_meta, aes(x=pseudotime, y=entropy, color=ClusterName)) + geom_point(size=1, alpha=1) + scale_color_manual(values=paletteDiscrete(unique(myeloid_harmony$cell_state), set = "stallion")) + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + facet_wrap(facets = vars(Group))
+```
+
+```{r}
+levels(Myeloid_2)
+```
+
+```{r}
+Myeloid_2_noRes <- subset(Myeloid_2, idents = c("TREM2 (SPP1)","TREM2 (APOE)","TREM2 (FN1)","Inflam 1 (CCL20)","Inflam 2 (CCL4)"        ,"KLF2/KLF4 Mac","IFN II","Classical Monocyte","Non Classical Monocyte","cDC1","cDC2 (CCl17)","cDC2 (MHC2 Hi)" ))
+```
+
+```{r}
+VlnPlot(Myeloid_2_noRes, features = c("TREM2..APOE.","IFN.II"), group.by = "HF.etiology", pt.size=0)
+```
+
+```{r}
+aggregate(Myeloid_2_noRes@meta.data[,74:75], list(Myeloid_2_noRes@meta.data$sample), mean)
+```
+
+```{r}
+aggregate(Myeloid_2_noRes@meta.data[,74:75], list(Myeloid_2_noRes@meta.data$HF.etiology), mean)
+```
+
+# TF Erichment
+```{r}
+library(dorothea)
+library(tibble)
+library(pheatmap)
+library(tidyr)
+library(viper)
+```
+
+```{r}
+Idents(Myeloid_2) <- "cell_type"
+```
+
+```{r}
+## We read Dorothea Regulons for Human:
+dorothea_regulon_human <- get(data("dorothea_hs", package = "dorothea"))
+
+## We obtain the regulons based on interactions with confidence level A, B and C
+regulon <- dorothea_regulon_human %>%
+    dplyr::filter(confidence %in% c("A","B","C"))
+
+## We compute Viper Scores 
+Myeloid_2 <- run_viper(Myeloid_2, regulon,
+                  options = list(method = "scale", minsize = 4, 
+                                 eset.filter = FALSE, cores = 1, 
+                                 verbose = FALSE))
+
+DefaultAssay(object = Myeloid_2) <- "dorothea"
+Myeloid_2 <- ScaleData(Myeloid_2)
+```
+
+```{r}
+Idents(Myeloid_2) <- "cell_type"
+```
+
+```{r}
+## We transform Viper scores, scaled by seurat, into a data frame to better 
+## handling the results
+viper_scores_df <- GetAssayData(Myeloid_2, slot = "scale.data", 
+                                    assay = "dorothea") %>%
+  data.frame(check.names = F) %>%
+  t()
+
+## We create a data frame containing the cells and their clusters
+CellsClusters <- data.frame(cell = names(Idents(Myeloid_2)), 
+                            cell_type = as.character(Idents(Myeloid_2)),
+                            check.names = F)
+
+## We create a data frame with the Viper score per cell and its clusters
+viper_scores_clusters <- viper_scores_df  %>%
+  data.frame() %>% 
+  rownames_to_column("cell") %>%
+  gather(tf, activity, -cell) %>%
+  inner_join(CellsClusters)
+
+## We summarize the Viper scores by cellpopulation
+summarized_viper_scores <- viper_scores_clusters %>% 
+  group_by(tf, cell_type) %>%
+  summarise(avg = mean(activity),
+            std = sd(activity))
+```
+
+```{r}
+## We select the most variable TFs
+highly_variable_tfs <- summarized_viper_scores %>%
+  group_by(tf) %>%
+  mutate(var = var(avg))  %>%
+  ungroup() %>%
+  top_n(500, var) %>%
+  distinct(tf)
+
+## We prepare the data for the plot
+summarized_viper_scores_df <- summarized_viper_scores %>%
+  semi_join(highly_variable_tfs, by = "tf") %>%
+  dplyr::select(-std) %>%   
+  spread(tf, avg) %>%
+  data.frame(row.names = 1, check.names = FALSE) 
+```
+
+```{r}
+palette_length = 100
+my_color = colorRampPalette(c("Darkblue", "white","red"))(palette_length)
+
+my_breaks <- c(seq(min(summarized_viper_scores_df), 0, 
+                   length.out=ceiling(palette_length/2) + 1),
+               seq(max(summarized_viper_scores_df)/palette_length, 
+                   max(summarized_viper_scores_df), 
+                   length.out=floor(palette_length/2)))
+
+viper_hmap <- pheatmap(t(summarized_viper_scores_df),fontsize=14, 
+                       fontsize_row = 5, 
+                       color=my_color, breaks = my_breaks, 
+                       main = "DoRothEA (ABC)", angle_col = 45,
+                       treeheight_col = 0,  border_color = NA,
+                       cluster_cols=F) 
+```
+
+# Correlate with Branch Probs
+```{r}
+Idents(Myeloid_2) <- "cell_state"
+Myeloid_2_noRes <- subset(Myeloid_2, idents = c("TREM2 (SPP1)","TREM2 (APOE)","TREM2 (FN1)","Inflam 1 (CCL20)","Inflam 2 (CCL4)","KLF2/KLF4 Mac","IFN II","Classical Monocyte","Non Classical Monocyte","cDC1","cDC2 (CCl17)","cDC2 (MHC2 Hi)" ))
+```
+
+```{r}
+df <- Myeloid_2_noRes@meta.data[,c("cDC1","cDC2..MHC2.Hi.","Non.Classical.Monocyte","TREM2..APOE.","IFN.II")]
+Myeloid_2_noRes@meta.data$branch <- colnames(df)[max.col(df, ties.method = "first")]
+```
+
+```{r}
+Idents(Myeloid_2_noRes) <- "branch"
+Myeloid_2_noRes <- subset(Myeloid_2_noRes, idents = c("TREM2..APOE.", "IFN.II"))
+```
+
+```{r}
+## We transform Viper scores, scaled by seurat, into a data frame to better 
+## handling the results
+viper_scores_df <- GetAssayData(Myeloid_2_noRes, slot = "scale.data", 
+                                    assay = "dorothea") %>%
+  data.frame(check.names = F) %>%
+  t()
+
+## We create a data frame containing the cells and their clusters
+CellsClusters <- data.frame(cell = names(Idents(Myeloid_2_noRes)), 
+                            cell_type = as.character(Idents(Myeloid_2_noRes)),
+                            check.names = F)
+
+## We create a data frame with the Viper score per cell and its clusters
+viper_scores_clusters <- viper_scores_df  %>%
+  data.frame() %>% 
+  rownames_to_column("cell") %>%
+  gather(tf, activity, -cell) %>%
+  inner_join(CellsClusters)
+
+## We summarize the Viper scores by cellpopulation
+summarized_viper_scores <- viper_scores_clusters %>% 
+  group_by(tf, cell_type) %>%
+  summarise(avg = mean(activity),
+            std = sd(activity))
+```
+
+```{r}
+## We select the most variable TFs
+highly_variable_tfs <- summarized_viper_scores %>%
+  group_by(tf) %>%
+  mutate(var = var(avg))  %>%
+  ungroup() %>%
+  top_n(100, var) %>%
+  distinct(tf)
+
+## We prepare the data for the plot
+summarized_viper_scores_df <- summarized_viper_scores %>%
+  semi_join(highly_variable_tfs, by = "tf") %>%
+  dplyr::select(-std) %>%   
+  spread(tf, avg) %>%
+  data.frame(row.names = 1, check.names = FALSE) 
+```
+
+```{r}
+palette_length = 100
+my_color = colorRampPalette(c("Darkblue", "white","red"))(palette_length)
+
+my_breaks <- c(seq(min(summarized_viper_scores_df), 0, 
+                   length.out=ceiling(palette_length/2) + 1),
+               seq(max(summarized_viper_scores_df)/palette_length, 
+                   max(summarized_viper_scores_df), 
+                   length.out=floor(palette_length/2)))
+
+viper_hmap <- pheatmap(t(summarized_viper_scores_df),fontsize=14, 
+                       fontsize_row = 5, 
+                       color=my_color, breaks = my_breaks, 
+                       main = "DoRothEA (ABC)", angle_col = 45,
+                       treeheight_col = 0,  border_color = NA,
+                       cluster_cols=F) 
+```
+
+```{r}
+DotPlot(Myeloid_2_noRes, features = rev(c("FOSL1","FOSL2","CEBPB","JUN","ETV4","FOS","TCF7L2","CEBPD","EGR1","SMAD1","MYB","ESR1","NFATC1","PRDM14","SOX10","ELF3","ZNF143","TCF4","KLF9","RFX1","KLF6","PAX6","TEAD4","OTX2","XBP1","CEBPG","RUNX2","AHR","NFE2L1","SOX11","TEAD1","ASCL1","GATA6","MEF2B","ESRRA","GATA3","BHLHE40","ZBTB7A","ZEB1","MNT","RUNX3","POU2F1","E2F6","IRF9","STAT1","ZEB2","STAT2","ZNF263","IRF1","RFX5")), group.by = "HF.etiology", col.min=0, cols = c("lightgrey", "red")) + RotatedAxis()
+```
+
+```{r}
+saveRDS(Myeloid_2, "./panels/tf_enrichment/Myeloid_2.rds")
+```
+
+```{r}
+DefaultAssay(myeloid) <- "SCT"
+FeaturePlot(object=myeloid, features = "IL1B",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+```{r}
+VlnPlot(myeloid, features = c("NCF1"), group.by = "HF.etiology", pt.size=0, cols=paletteDiscrete(unique(myeloid$cell_state), set = "stallion"), sort = TRUE) + NoLegend()
+```
+
+```{r}
+myeloid <- readRDS("./human_myeloid_final.rds") 
+```
+
+```{r}
+DefaultAssay(myeloid) <- "SCT"
+FeaturePlot(myeloid, reduction = 'umap', features = "CD14") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,10))
+```
+
+```{r}
+DefaultAssay(myeloid) <- "CITE"
+FeaturePlot(myeloid, reduction = 'umap', features = "CITE-CD14") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,30))
+```
+
+```{r}
+DefaultAssay(myeloid_harmony) <- "CITE"
+FeaturePlot(myeloid_harmony, reduction = 'umap', features = "CITE-CD14") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,30))
+```
+
+```{r}
+p_list <- plot_density(myeloid, features = c("CCR2", "CD14"), joint = TRUE, combine = FALSE)
+p_list[[length(p_list)]]
+```
+
+
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+DotPlot(myeloid_harmony, features = c("CD14"), group.by = "HF.etiology") + RotatedAxis()
+DefaultAssay(myeloid_harmony) <- "CITE"
+DotPlot(myeloid_harmony, features = c("CITE-CD14"), group.by = "HF.etiology") + RotatedAxis()
+```
+
+```{r}
+DotPlot(myeloid, features = "CCL8", group.by = "cell_state")
+```
+
+
+```{r}
+DefaultAssay(myeloid_harmony) <- "SCT"
+FeaturePlot(myeloid_harmony, reduction = 'umap', features = "CD14") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,5))
+```
+
+```{r}
+DefaultAssay(myeloid) <- "SCT"
+plot_density(myeloid, reduction = 'umap', features = "CCL8")
+```
+```{r}
+DotPlot(myeloid, features = "CCL8", group.by = "HF.etiology")
+```
+```{r}
+myeloid <- readRDS("human_myeloid_final.rds")
+```
+
+```{r}
+DefaultAssay(myeloid) <- "SCT"
+postn_fap_avg_exp <- AverageExpression(myeloid,
+                                        features = c("SPP1","IL1B"),
+                                        return.seurat = FALSE,
+                                        group.by = "sample",
+                                        slot = "data",
+                                        verbose = TRUE )
+```
+
+```{r}
+t(postn_fap_avg_exp[["SCT"]])
+```
+
+
+```{r}
+Idents(myeloid) <- "HF.etiology"
+donor <- subset(myeloid, idents = "Donor")
+```
+
+```{r}
+DefaultAssay(donor) <- "SCT"
+FeaturePlot(donor, reduction = 'umap', features = "TREM1", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1)) 
+```
+
+```{r}
+DefaultAssay(donor) <- "CITE"
+FeaturePlot(donor, reduction = 'umap', features = "CITE-TREM1", raster = FALSE) + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,10))
+```
+```{r}
+DotPlot(myeloid, features = c("ARNTL","NR1D1","NFIL3"), group.by = "HF.etiology")
+```
+
+

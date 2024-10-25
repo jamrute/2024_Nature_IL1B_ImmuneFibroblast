@@ -1,0 +1,366 @@
+```{r}
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(SeuratDisk)
+library(ArchR)
+library(Nebulosa)
+```
+
+```{r}
+Convert("./converted_for_seurat/AKK002_157782_RZ_P3.h5ad", dest = "h5seurat", overwrite = TRUE)
+spatial <- LoadH5Seurat("./converted_for_seurat/AKK002_157782_RZ_P3.h5seurat")
+spatial <- SCTransform(spatial, assay = "RNA", verbose = FALSE, method = "glmGamPoi", vars.to.regress = "percent.mt")
+```
+
+# Ref Map to Human Global
+```{r}
+sample <- readRDS("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary\ Projects/Amgen_ICM_CITEseq/Complete_atlas/annotate/snHF_atlas.rds")
+```
+
+# Ref Map
+```{r}
+anchors <- FindTransferAnchors(
+  reference = sample,
+  query = spatial,
+  normalization.method = "SCT",
+  reference.reduction = "harmony",
+  dims = 1:50
+)
+
+predictions <- TransferData(anchorset = anchors, refdata = sample$cell.type, dims = 1:50)
+spatial <- AddMetaData(spatial, metadata = predictions)
+```
+
+# Prediction Scores
+```{r}
+features = c("prediction.score.Lymphatic","prediction.score.Pericyte","prediction.score.TNKCells","prediction.score.Fibroblast","prediction.score.Endothelium","prediction.score.Endocardium","prediction.score.Myeloid","prediction.score.SMC","prediction.score.Adipocyte","prediction.score.Cardiomyocyte","prediction.score.Glia","prediction.score.Epicardium","prediction.score.Mast","prediction.score.max")
+```
+
+```{r}
+FeaturePlot(spatial, features = c("prediction.score.Pericyte","prediction.score.TNKCells","prediction.score.Fibroblast","prediction.score.Endothelium","prediction.score.Endocardium","prediction.score.Myeloid","prediction.score.SMC","prediction.score.Adipocyte","prediction.score.Cardiomyocyte","prediction.score.Epicardium","prediction.score.max"),keep.scale="all", reduction = "spatial", cols = c("lightgrey", "darkred"), ncol = 5) & theme(plot.title = element_text(size = 10)) + NoLegend()
+```
+
+```{r}
+plot_density(spatial, features = "prediction.score.Epicardium", reduction = "spatial") + NoLegend()
+plot_density(spatial, features = "prediction.score.Endocardium", reduction = "spatial") + NoLegend()
+```
+
+
+```{r}
+DefaultAssay(spatial) <- "prediction.scores"
+p_list <- plot_density(spatial, c("prediction.score.Myeloid", "prediction.score.Fibroblast"), joint = TRUE, combine = FALSE, reduction = "spatial")
+p_list[[length(p_list)]]
+```
+
+# FAP Expression
+```{r}
+DefaultAssay(spatial) <- "SCT"
+FeaturePlot(spatial, reduction = 'spatial', features = "FAP") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1)) + NoLegend()
+
+FeaturePlot(spatial, reduction = 'spatial', features = "POSTN") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,5)) + NoLegend()
+```
+
+# Ground State
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("PI16","CCDC80", "FBLN1", "SVEP1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$groundStatefib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "groundStatefib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# Myofib
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("ACTA2","TAGLN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$myofib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "myofib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# CCL2/THBS1
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("CCL2","CCL11","THBS1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$CCL2fib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "CCL2fib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# APOE Fib
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("APOE","AGT","RGS5")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$APOEfib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "APOEfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# DLK1 Fib
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("DLK1","GPX3")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$DLK1fib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "DLK1fib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# PTGDS Fib
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("PTGDS","GPC3")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$PTGDSfib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "PTGDSfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# APOD Fib
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("APOD","IGFBP5")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$APODfib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "APODfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# GDF15 Fib
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("ATF5","SLC3A2","TRIB3","GDF15")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$GDF15fib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "GDF15fib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# POSTN/FAP Fib
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("POSTN","COMP","FAP","COL1A1","THBS4","COL3A1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$POSTNfib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "POSTNfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# IFN
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("ISG15", "MX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$IFNfib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "IFNfib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# PLA2G2A
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("PLA2G2A", "CFD")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$PLA2G2A_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "PLA2G2A_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# PCOLCE2
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("PCOLCE2", "IGFBP6")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$PCOLCE2fib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "PCOLCE2fib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+# PRG4
+```{r}
+DefaultAssay(spatial) <- "SCT"
+expdata <- GetAssayData(spatial)
+Pop1 <- c("PRG4", "CXCL14")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+spatial@meta.data$PRG4fib_z<-z_scores[1,]
+FeaturePlot(object=spatial, features = "PRG4fib_z",pt.size=.5, reduction = 'spatial') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2)) + NoLegend()
+```
+
+
+
+

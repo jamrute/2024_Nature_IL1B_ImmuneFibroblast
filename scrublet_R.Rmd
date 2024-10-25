@@ -1,0 +1,90 @@
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(sctransform)
+library(ggplot2)
+library(harmony)
+library(ArchR)
+library(ggsci)
+library(SeuratDisk)
+```
+
+```{r}
+cor <- readRDS("../global_object/final_global_annotated.rds")
+```
+
+```{r}
+SaveH5Seurat(cor, filename = "./final_global_annotated.h5Seurat")
+```
+
+```{r}
+Convert("./final_global_annotated.h5Seurat", dest = "h5ad")
+```
+
+```{r}
+#### Load in doublet output
+scrub = read.csv('./scrublet-scores/all.csv',header=T,row.names=1)
+```
+
+```{r}
+cor@meta.data$scrublet_score = scrub$scrublet_score
+cor@meta.data$scrublet_cluster_score = scrub$scrublet_cluster_score
+cor@meta.data$bh_pval = scrub$bh_pval
+```
+
+```{r}
+VlnPlot(cor, group.by = "HF.etiology2", features = "scrublet_score")
+```
+
+```{r}
+cor2 <- subset(
+  x = cor,
+  subset = scrublet_score < 0.2
+)
+```
+
+```{r}
+cor2
+```
+
+```{r}
+DefaultAssay(cor2) <- "RNA"
+cor2 <- SCTransform(cor2, vars.to.regress = c("percent.mt"), verbose = FALSE)
+cor2 <- RunPCA(cor2)
+```
+
+```{r}
+cor2 <- FindNeighbors(cor2, dims = 1:50)
+cor2 <- FindClusters(cor2, resolution = 0.5, algorithm = 3)
+cor2 <- RunUMAP(cor2, dims = 1:50)
+```
+
+```{r}
+DimPlot(cor2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

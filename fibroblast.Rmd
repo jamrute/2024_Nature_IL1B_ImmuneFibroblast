@@ -1,0 +1,2199 @@
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(sctransform)
+library(ggplot2)
+library(harmony)
+library(ArchR)
+library(ggsci)
+library(SeuratDisk)
+library(harmony)
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(dplyr)
+library(sctransform)
+library(pheatmap)
+library(Matrix)
+library(RColorBrewer)
+library(scales)
+library(data.table)
+library(stats)
+library("Nebulosa")
+library(ggsci)
+library(ArchR)
+library(biomaRt)
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(sctransform)
+library(ggplot2)
+library(pheatmap)
+library(Seurat)
+library(ggplot2)
+library(Matrix)
+library(RColorBrewer)
+library(dplyr)
+library(scales)
+library(data.table)
+library(stats)
+library("Nebulosa")
+```
+
+```{r}
+fibroblast <- readRDS("./Fibroblast.dim50.wharmony.filtered.interation3.annotated.rds")
+```
+
+```{r}
+DefaultAssay(fibroblast) <- 'SCT'
+Idents(fibroblast) <- "functional.cluster"
+rna.rnamarkers <- FindAllMarkers(fibroblast, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_GEX_functional.cluster.csv", quote = FALSE)
+```
+
+```{r}
+postn.myofib.markers <- FindMarkers(fibroblast, ident.1 = "Myofibroblast", ident.2 = "POSTN+ Fib", min.pct = 0.25)
+#write.csv(postn.myofib.markers, file ="./DE_POSTN_MyoFib.csv", quote = FALSE)
+```
+
+```{r}
+postn.myofib.markers <- subset(postn.myofib.markers, postn.myofib.markers$p_val_adj < 0.05)
+postn.myofib.markers <- subset(postn.myofib.markers, abs(postn.myofib.markers$avg_log2FC) > 0.58)
+```
+
+```{r}
+postn.myofib.markers <- postn.myofib.markers[order(postn.myofib.markers$avg_log2FC),] 
+```
+
+```{r}
+Idents(fibroblast) <- "functional.cluster"
+fibroblast_subset <- subset(fibroblast, idents = c("Myofibroblast","POSTN+ Fib"))
+```
+
+```{r}
+DefaultAssay(fibroblast_subset) <- "SCT"
+Idents(fibroblast_subset) <- "functional.cluster"
+
+DoHeatmap(fibroblast_subset, features = rownames(postn.myofib.markers), assay = "SCT", 
+          group.colors = paletteDiscrete(unique(fibroblast_subset$functional.cluster), set = "stallion"), size = 2, angle = 90) + NoLegend() + scale_fill_gradientn(colours=paletteContinuous("solarExtra"))+ 
+    theme(text = element_text(size = 5))
+ggsave(filename="heatmap_GEX_F2_F9.png")
+```
+
+```{r}
+Idents(fibroblast) <- "HF.etiology"
+fib_HF <- subset(fibroblast, idents = "Donor", invert=TRUE)
+```
+
+```{r}
+AverageExpression(fib_HF, assays = "SCT", features = c("THY1"), group.by = "sample")
+```
+
+```{r}
+AverageExpression(fib_HF, assays = "CITE", features = c("CITE-FAP"), group.by = "sample", slot = "scale.data")
+```
+
+# Factor CellType
+```{r}
+Idents(fibroblast) <- "functional.cluster"
+fibroblast$functional.cluster <- factor(fibroblast$functional.cluster, levels = c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","DLK1 Fib","PTGDS Fib","APOD Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","PLA2G2A Fib","POLCE2.MFAP5 Fib","PRG4 Fib"), ordered = TRUE)
+```
+
+```{r}
+prop.table(table(Idents(fibroblast), fibroblast$HF.etiology), margin = 2)
+```
+
+```{r}
+DimPlot(fibroblast, reduction = 'umap', group.by = 'functional.cluster', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))
+
+DimPlot(fibroblast, reduction = 'fdl', group.by = 'functional.cluster', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))
+```
+
+```{r}
+ggplot(fibroblast@meta.data, aes(x=HF.etiology, fill=functional.cluster)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) +  scale_fill_manual(values=as.vector(paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+prop.table(table(fibroblast$functional.cluster, fibroblast$sample), margin = 2)
+```
+
+```{r}
+ggplot(fibroblast@meta.data, aes(x=time.since.last.ischemic.event, fill=functional.cluster)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) +  scale_fill_manual(values=as.vector(paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+Idents(fibroblast) <- "HF.etiology"
+ami <- subset(fibroblast, idents = "AMI")
+
+fun <- function(x) {
+  if (x == "2 mo") {"1week-3mo"} 
+  else if (x == "3 mo") {"1week-3mo"}
+  else if (x == "4 days ") {"<1week"}
+  else if (x == "7 days ") {"<1week"}
+}
+ami$MI.time.category <- mapply(fun, ami$time.since.last.ischemic.event)
+```
+
+```{r}
+ggplot(ami@meta.data, aes(x=MI.time.category, fill=functional.cluster)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) +  scale_fill_manual(values=as.vector(paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+DimPlot(fibroblast, reduction = 'umap', group.by = 'functional.cluster', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"), split.by = "HF.etiology")
+```
+
+```{r}
+pdf("/Users/jamrute/Desktop/pdf_panels/2a.pdf", useDingbats = FALSE, width=7, height=4)
+
+DimPlot(fibroblast, reduction = 'umap', group.by = 'functional.cluster', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))
+dev.off()
+```
+
+
+```{r}
+fibroblast$HF.etiology2 <- as.character(fibroblast$HF.etiology) 
+fibroblast$time.since.last.ischemic.event <- as.character(fibroblast$time.since.last.ischemic.event) 
+```
+
+```{r}
+SaveH5Seurat(fibroblast, filename = "./human_fibroblast_final.h5Seurat")
+```
+
+```{r}
+Convert("./human_fibroblast_final.h5Seurat", dest = "h5ad")
+```
+
+```{r}
+DefaultAssay(fibroblast) <- 'SCT'
+Idents(fibroblast) <- "functional.cluster"
+rna.rnamarkers <- FindAllMarkers(fibroblast, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_GEX_functional.cluster.csv", quote = FALSE)
+```
+
+```{r}
+rna.rnamarkers <- read.csv2('./DE_GEX_functional.cluster.csv', header=TRUE, sep=',', row.names = 1)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+Idents(fibroblast) <- "functional.cluster"
+rna.rnamarkers %>%
+    group_by(cluster) %>%
+    top_n(n = 10, wt = avg_log2FC) -> top10
+DoHeatmap(fibroblast, features = top10$gene, assay = "SCT", 
+          group.colors = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"), size = 2, angle = 90) + NoLegend() + scale_fill_gradientn(colours=paletteContinuous("solarExtra"))+ 
+    theme(text = element_text(size = 5))
+ggsave(filename="heatmap_GEX.png")
+```
+
+```{r}
+DefaultAssay(fibroblast) <- 'CITE'
+Idents(fibroblast) <- "functional.cluster"
+adt.rnamarkers <- FindAllMarkers(fibroblast, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(adt.rnamarkers, file ="./DE_CITE_functional.cluster.csv", quote = FALSE)
+```
+
+# Create heatmaps for GEX
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+genes <- c("PI16","CCDC80","FBLN1","SVEP1",
+           "ACTA2","TAGLN",
+           "CCL2", "CCL11", "THBS1",
+           "APOE","AGT","RGS5",
+           "DLK1","GPX3",
+           "PTGDS","GPC3",
+           "APOD","IGFBP5",
+           "ATF5","SLC3A2","TRIB3","GDF15",
+           "POSTN","COMP","COL1A1","THBS4","COL3A1",
+           "ISG15","MX1",
+           "PLA2G2A",
+           "PCOLCE2", "IGFBP6",
+           "PRG4", "CXCL14")
+
+DotPlot(fibroblast, features = unique(genes), group.by = "functional.cluster", col.min=0, cols = c("lightgrey", "red")) + RotatedAxis()
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+genes <- c("GTF2I",'RMC1','GTF2IRD2','SRSF3,','USP36','AGAP5','MAP3K7CL','NMB','ATPAF2','ATP6V1G2','WDR73')
+
+DotPlot(fibroblast, features = unique(genes), group.by = "functional.cluster", col.min=0, cols = c("lightgrey", "red")) + RotatedAxis()
+```
+
+```{r}
+FeaturePlot(object=fibroblast, features = "NMB",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# z-scores
+
+# Ground State
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("PI16","CCDC80", "FBLN1", "SVEP1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$groundStatefib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "groundStatefib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Myofib
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("ACTA2","TAGLN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$myofib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "myofib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# CCL2/THBS1
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("CCL2","CCL11","THBS1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$CCL2fib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "CCL2fib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+global <- readRDS("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary_Projects/Amgen_ICM_CITEseq/Human_CITEseq/global_object/final_global_annotated.rds")
+```
+
+```{r}
+ccl2_markers <- c("CITE-NECTIN2","CITE-ANPEP","CITE-CD40","CITE-PDCD1LG2")
+postn_markers <- c("CITE-LAMP1","CITE-CD63","CITE-CD276","CITE-CD164","CITE-CD58","CITE-FAP","CITE-SLAMF1","CITE-NOTCH1","CITE-IGHG1","CITE-FAS","CITE-ITGA4","CITE-CD79B","CITE-NGFR","CITE-THBD","CITE-TPSAB1","CITE-HLA-A2","CITE-PDCD1","CITE-KDR","CITE-CD48","CITE-CD45RO","CITE-ICOS","CITE-CXCR3","CITE-CXCR3","CITE-TNFRSF4","CITE-ITGAX","CITE-TNFSF4","CITE-CD33","CITE-TIGIT","CITE-TNFSF11","CITE-MME","CITE-ITGAL","CITE-HAVCR1","CITE-SIGLEC7","CITE-IGKC","CITE-IL6R","CITE-CD5","CITE-FCER2","CITE-PTGDR2","CITE-ENG","CITE-CCR5","CITE-LAIR1","CITE-KIR2DL2","CITE-CD24","CITE-IL4R","CITE-NECTIN2","CITE-CD84","CITE-SIRPA","CITE-CCR7","CITE-FCGR2A","CITE-CDH2","CITE-IGLL1","CITE-CD72","CITE-FCGR1A","CITE-CXCR6","CITE-TNFRSF18","CITE-HLA-DR","CITE-CD2","CITE-CCR8","CITE-CRLF2","CITE-KLRG1","CITE-TNFSF10","CITE-ITGB7","CITE-CD52","CITE-CCR2","CITE-CD82","CITE-CD14","CITE-CRTAM")
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "CITE"
+sample.averageexpression <- AverageExpression(fibroblast, features = postn_markers, assays = "CITE", group.by = c("functional.cluster"))
+
+pheatmap(sample.averageexpression[[1]], scale="row", col=paletteContinuous("blueYellow"), cluster_rows=FALSE, fontsize_row=4, fontsize_col=4, cluster_cols = FALSE, legend = TRUE, breaks = seq(0,3, by = 3/256), cellwidth = 4, cellheight =4, border_color=NA)
+```
+
+```{r}
+DefaultAssay(global) <- "CITE"
+sample.averageexpression <- AverageExpression(global, features = postn_markers, assays = "CITE", group.by = c("annotation.0.1"))
+
+pheatmap(sample.averageexpression[[1]], scale="row", col=paletteContinuous("blueYellow"), cluster_rows=FALSE, fontsize_row=4, fontsize_col=4, cluster_cols = FALSE, legend = TRUE, breaks = seq(0,3, by = 3/256), cellwidth = 4, cellheight = 4, border_color=NA)
+```
+
+# APOE Fib
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("APOE","AGT","RGS5")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$APOEfib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "APOEfib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# DLK1 Fib
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("DLK1","GPX3")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$DLK1fib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "DLK1fib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# PTGDS Fib
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("PTGDS","GPC3")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$PTGDSfib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "PTGDSfib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# APOD Fib
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("APOD","IGFBP5")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$APODfib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "APODfib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# GDF15 Fib
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("ATF5","SLC3A2","TRIB3","GDF15")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$GDF15fib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "GDF15fib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# POSTN/FAP Fib
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("POSTN","COMP","FAP","COL1A1","THBS4","COL3A1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$POSTNfib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "POSTNfib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# IFN
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("ISG15", "MX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$IFNfib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "IFNfib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# PLA2G2A
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("PLA2G2A", "CFD")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$PLA2G2Afib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "PLA2G2Afib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# PCOLCE2
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("PCOLCE2", "IGFBP6")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$PCOLCE2fib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "PCOLCE2fib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# PRG4
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("PRG4", "CXCL14")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$PRG4fib_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "PRG4fib_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+
+
+
+
+
+# Pathway analysis across clusters
+```{r}
+library(clusterProfiler)
+library(DOSE)
+library(enrichplot)
+library(ReactomePA)
+library(ggplot2)
+```
+
+```{r}
+d <- read.csv("./DE_GEX_functional.cluster.csv")
+d <- filter(d, avg_log2FC > 0.58)
+d <- filter(d, p_val_adj < 0.05)
+d_new <- d[c("gene", "cluster")]
+```
+
+```{r}
+eg <- bitr(as.character(d_new$gene), fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+d_new <- filter(d_new, gene %in% eg$SYMBOL)
+d_new_enterzID <- merge(d_new, eg, by.x = "gene", by.y = "SYMBOL")
+d_new_enterzID <- d_new_enterzID[c("ENTREZID", "cluster")]
+geneList <- unstack(d_new_enterzID)
+geneList
+```
+
+```{r}
+ck <- compareCluster(geneCluster = geneList, fun = enrichGO, OrgDb="org.Hs.eg.db")
+ck <- setReadable(ck, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+head(ck) 
+```
+
+```{r}
+dotplot(ck, font.size = 8) + theme(axis.text.x=element_text(angle=90, hjust=1))
+```
+
+```{r}
+prop.table(table(fibroblast$functional.cluster, fibroblast$sample), margin = 2)
+```
+
+```{r}
+fibroblast <- readRDS("./Fibroblast.dim50.wharmony.filtered.interation3.annotated.rds")
+```
+
+```{r}
+FeaturePlot(fibroblast, features = "MYD88", reduction = 'umap')
+DotPlot(fibroblast, features = "MYD88", group.by = "functional.cluster")
+```
+
+
+# Create feature plots
+```{r}
+pdf("/Users/jamrute/Desktop/pdf_panels/2c_top.pdf", useDingbats = FALSE, width=5, height=4)
+
+DefaultAssay(fibroblast) <- "SCT"
+FeaturePlot(fibroblast, reduction = 'umap', features = "POSTN") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,3)) 
+dev.off()
+```
+
+```{r}
+pdf("/Users/jamrute/Desktop/pdf_panels/2c_bottom.pdf", useDingbats = FALSE, width=5, height=4)
+
+DefaultAssay(fibroblast) <- "CITE"
+FeaturePlot(fibroblast, reduction = 'umap', features = "CITE-FAP") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,10)) 
+dev.off()
+```
+
+
+```{r}
+DefaultAssay(f) <- "CITE"
+FeaturePlot(f, reduction = 'umap', features = "CITE-CD14") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,5)) 
+```
+
+```{r}
+f <- readRDS("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary_Projects/Giant_Cell_Myocarditis/CITE-seq/analysis/cell_type/fibroblast/v2/fibroblast.rds")
+```
+
+```{r}
+plot_density(fibroblast, features = "POSTN", reduction = 'umap')
+plot_density(fibroblast, features = "MEOX1", reduction = 'umap')
+plot_density(fibroblast, features = "EDNRA", reduction = 'umap')
+plot_density(fibroblast, features = "RUNX1", reduction = 'umap')
+```
+
+```{r}
+VlnPlot(fibroblast, features = "RUNX1", group.by = "HF.etiology")
+```
+
+```{r}
+plot_density(fibroblast, features = "MEOX1", reduction = 'umap')
+plot_density(fibroblast, features = "RUNX1", reduction = 'umap')
+plot_density(fibroblast, features = "ACTA2", reduction = 'umap')
+plot_density(fibroblast, features = "POSTN", reduction = 'umap')
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "CITE"
+FeaturePlot(fibroblast, reduction = 'umap', features = "CITE-THY1") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,20))
+
+plot_density(fibroblast, features = "CITE-THY1", reduction = 'umap')
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "CITE"
+FeaturePlot(fibroblast, reduction = 'umap', features = "CITE-LAMP1") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,25))
+plot_density(fibroblast, features = "CITE-LAMP1", reduction = 'umap')
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "CITE"
+FeaturePlot(fibroblast, reduction = 'umap', features = "CITE-CD63") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,40))
+plot_density(fibroblast, features = "CITE-CD63", reduction = 'umap')
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "CITE"
+FeaturePlot(fibroblast, reduction = 'umap', features = "CITE-CD276") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,20))
+plot_density(fibroblast, features = "CITE-CD276", reduction = 'umap')
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "CITE"
+FeaturePlot(fibroblast, reduction = 'umap', features = "CITE-F11R") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,10))
+plot_density(fibroblast, features = "CITE-F11R", reduction = 'umap')
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "CITE"
+FeaturePlot(fibroblast, reduction = 'umap', features = "CITE-BST2") + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,10))
+plot_density(fibroblast, features = "CITE-BST2", reduction = 'umap')
+```
+
+```{r}
+
+```
+
+
+```{r}
+DefaultAssay(fibroblast) <- "RNA"
+plot_density(fibroblast, features = c("CITE-FAP", "CITE-THY1"), reduction = "fdl", joint = TRUE, combine = FALSE)[[1]]
+plot_density(fibroblast, features = c("CITE-FAP", "CITE-THY1"), reduction = "fdl", joint = TRUE, combine = FALSE)[[2]]
+plot_density(fibroblast, features = c("CITE-FAP", "CITE-THY1"), reduction = "fdl", joint = TRUE, combine = FALSE)[[3]]
+```
+
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("FAP", "POSTN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$FAPPOSTN_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "FAPPOSTN_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# TGFb and IL1b Target Genes Enrichment Score
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("CALR", "CCL2", "CCND1", "CFLAR", "COL1A1", "COL1A2", "COl3A1", "COL4A1", "COL5A1", "CTGF", "CYP1B1", "ELN", "FBN1", "FN1", "HGF", "HIC1", "HSPB1", "IGF1", "ITGA1", "ITGA5", "ITGB1","JUNB","LOX","LOXL1","LPCAT2","MYC","PDGFRB","POSTN","RORA","RPL27","SERPINE1","SERPINE2","SOCS3","TAGLN","THBS2","TIMP1","TPM4","VEGFA")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$TGFb_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "TGFb_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+
+FeaturePlot(object=fibroblast, features = "TGFb_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# IL-1b target genes
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("PLA2G5","ELN","FGF7","TIMP3","ADAMTS4","ADAMTS1","PLA2G2A","ITGB1","TIMP2","SOCS3","SERPINE1","CD55","BGN"
+,"THBS4","COL8A1","CCL2","C3","VEGFD","HSPA1B","A4GALT","TIMP1","JUN","COL3A1","C1S","GADD45B","IL15RA","HSPA1A","VEGFA","HAPLN1","VCAN","C1R","PTGDS","FN1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$IL1b_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "IL1b_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+
+FeaturePlot(object=fibroblast, features = "IL1b_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+```
+
+```{r}
+plot_density(fibroblast, features = "IL1b_z")
+```
+
+# SPP1 Regulatory Potential
+```{r}
+spp1_genes <- read.csv2('./spp1_regulatory_genes.csv', header=TRUE, sep=',')
+spp1_genes$SPP1.Target.Potential.Score <- as.double(spp1_genes$SPP1.Target.Potential.Score)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- spp1_genes$Target[1:25]
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$SPP1_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "SPP1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+
+FeaturePlot(object=fibroblast, features = "SPP1_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+```
+```{r}
+DotPlot(fibroblast, features = "SPP1_z", group.by = "functional.cluster", col.min = 0)
+```
+
+# IL1B Regulatory Potential
+```{r}
+Il1b_genes <- read.csv2('./IL1b_regulatory_genes.csv', header=TRUE, sep=',')
+Il1b_genes$IL1B.Target.Potential.Score <- as.double(Il1b_genes$IL1B.Target.Potential.Score)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- Il1b_genes$Target[1:100]
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$IL1B_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "IL1B_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+
+FeaturePlot(object=fibroblast, features = "IL1B_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+```
+```{r}
+DotPlot(fibroblast, features = "IL1B_z", group.by = "functional.cluster", col.min = 0)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+postn_fap_avg_exp <- AverageExpression(fibroblast,
+                                        features = c("SPP1","POSTN"),
+                                        return.seurat = FALSE,
+                                        group.by = "sample",
+                                        slot = "data",
+                                        verbose = TRUE )
+```
+
+```{r}
+t(postn_fap_avg_exp[["SCT"]])
+```
+
+# Fibroblast State Signatures from Brandom/Milena's Paper
+# Homeostasis
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("COL1A1","PDGFRA","VIM","DCN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$H1_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "H1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("WIF1","DKK3","SFRP2","FRZB")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$H2_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "H2_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+# Injury Response
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("MT1-2","CCL2","CXCL1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$InjuryResponse_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "InjuryResponse_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Myofibroblast
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("ACTA2","CTHRC1","POSTN","FAP")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$Myofibroblast_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "Myofibroblast_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Matrifibrocyte
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("COMP","CHAD","CLIP2")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$Matrifibrocyte_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "Matrifibrocyte_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Late Resolution
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("COL8A1","MEOX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$LateResolution_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "LateResolution_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+fdl <- read.csv2('./panels/palantir/fdl.csv', header=TRUE, sep=',', row.names = 1)
+fdl$x <- as.double(fdl$x)
+fdl$y <- as.double(fdl$y)
+colnames(fdl) <- paste0("FDL_", 1:2)
+fibroblast[["fdl"]] <- CreateDimReducObject(embeddings = as.matrix(fdl), key = "FDL_")
+```
+
+```{r}
+FeaturePlot(object=fibroblast, features = "H1_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+
+FeaturePlot(object=fibroblast, features = "H2_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+
+FeaturePlot(object=fibroblast, features = "InjuryResponse_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+
+FeaturePlot(object=fibroblast, features = "Myofibroblast_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+
+FeaturePlot(object=fibroblast, features = "Matrifibrocyte_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+
+FeaturePlot(object=fibroblast, features = "LateResolution_z",pt.size=.5, reduction = 'fdl') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+FeaturePlot(fibroblast, reduction = 'fdl', features = "FAP") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1.5)) 
+```
+# Pot FAP and POSTN overtime
+```{r}
+Idents(fibroblast) <- "HF.etiology"
+donor_ami_icm <- subset(fibroblast, idents = c("Donor","AMI","ICM"))
+```
+
+```{r}
+unique(donor_ami_icm$sample)
+```
+```{r}
+fun <- function(x) {
+  if (x == "sample13") {"Donor"} 
+  else if (x == "sample28") {">3mo"}
+  else if (x == "sample32") {"Donor"}
+  else if (x == "sample33") {"Donor"}
+  else if (x == "sample34") {"Donor"}
+  else if (x == "sample39") {"Donor"}
+  else if (x == "sample41") {"Donor"}
+  else if (x == "sample4") {"4d"}
+  else if (x == "sample5") {"2mo"}
+  else if (x == "sample8") {"3mo"}
+  else if (x == "sample42") {"7d"}
+  else if (x == "sample1") {">3mo"}
+  else if (x == "sample2") {">3mo"}
+  else if (x == "sample12") {">3mo"}
+  else if (x == "sample17") {">3mo"}
+  else if (x == "sample27") {">3mo"}
+}
+donor_ami_icm$MI.time.category <- mapply(fun, donor_ami_icm$sample)
+```
+
+```{r}
+donor_ami_icm$MI.time.category <- factor(donor_ami_icm$MI.time.category, levels = rev(c("Donor", "4d", "7d", "2mo", "3mo", ">3mo")))
+```
+
+```{r}
+DefaultAssay(donor_ami_icm) <- "CITE"
+VlnPlot(donor_ami_icm, features = c("CITE-THY1","CITE-F11R","CITE-FAP","CITE-CD276","CITE-LAMP1","CITE-CD63"), group.by = "MI.time.category", assay = "CITE", stack = TRUE,
+        cols = as.vector(paletteDiscrete(unique(donor_ami_icm$MI.time.category), set = "stallion"))) + geom_boxplot(width=0.25, color = "white") + NoLegend()
+```
+
+# TF Erichment
+```{r}
+library(dorothea)
+library(tibble)
+library(pheatmap)
+library(tidyr)
+library(viper)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+Idents(fibroblast) <- "functional.cluster"
+```
+
+```{r}
+## We read Dorothea Regulons for Human:
+dorothea_regulon_human <- get(data("dorothea_hs", package = "dorothea"))
+
+## We obtain the regulons based on interactions with confidence level A, B and C
+regulon <- dorothea_regulon_human %>%
+    dplyr::filter(confidence %in% c("A","B","C"))
+
+## We compute Viper Scores 
+fibroblast <- run_viper(fibroblast, regulon,
+                  options = list(method = "scale", minsize = 4, 
+                                 eset.filter = FALSE, cores = 1, 
+                                 verbose = FALSE))
+
+DefaultAssay(object = fibroblast) <- "dorothea"
+fibroblast <- ScaleData(fibroblast)
+```
+
+```{r}
+Idents(fibroblast) <- "MI_category"
+
+## We transform Viper scores, scaled by seurat, into a data frame to better 
+## handling the results
+viper_scores_df <- GetAssayData(fibroblast, slot = "scale.data", 
+                                    assay = "dorothea") %>%
+  data.frame(check.names = F) %>%
+  t()
+
+## We create a data frame containing the cells and their clusters
+CellsClusters <- data.frame(cell = names(Idents(fibroblast)), 
+                            cell_type = as.character(Idents(fibroblast)),
+                            check.names = F)
+
+## We create a data frame with the Viper score per cell and its clusters
+viper_scores_clusters <- viper_scores_df  %>%
+  data.frame() %>% 
+  rownames_to_column("cell") %>%
+  gather(tf, activity, -cell) %>%
+  inner_join(CellsClusters)
+
+## We summarize the Viper scores by cellpopulation
+summarized_viper_scores <- viper_scores_clusters %>% 
+  group_by(tf, cell_type) %>%
+  summarise(avg = mean(activity),
+            std = sd(activity))
+
+## We select the most variable TFs
+highly_variable_tfs <- summarized_viper_scores %>%
+  group_by(tf) %>%
+  mutate(var = var(avg))  %>%
+  ungroup() %>%
+  top_n(1000, var) %>%
+  distinct(tf)
+
+## We prepare the data for the plot
+summarized_viper_scores_df <- summarized_viper_scores %>%
+  semi_join(highly_variable_tfs, by = "tf") %>%
+  dplyr::select(-std) %>%   
+  spread(tf, avg) %>%
+  data.frame(row.names = 1, check.names = FALSE) 
+```
+
+```{r}
+summarized_viper_scores_df
+```
+
+```{r}
+summarized_viper_scores_df_subset <- summarized_viper_scores_df[,c("ATF2","JUN","JUNB","NFKB1","NFKB2","STAT3","SMAD3","SMAD4")]
+```
+
+```{r}
+palette_length = 100
+my_color = colorRampPalette(c("Darkblue", "white","red"))(palette_length)
+
+my_breaks <- c(seq(min(summarized_viper_scores_df_subset), 0, 
+                   length.out=ceiling(palette_length/2) + 1),
+               seq(max(summarized_viper_scores_df_subset)/palette_length, 
+                   max(summarized_viper_scores_df_subset), 
+                   length.out=floor(palette_length/2)))
+
+viper_hmap <- pheatmap(t(summarized_viper_scores_df_subset)[,c("Donor","AMI <1wk","AMI <3mo","ICM","NICM")],fontsize=14, 
+                       fontsize_row = 5, 
+                       color=my_color, 
+                       main = "DoRothEA (ABC)", angle_col = 45,
+                       treeheight_col = 0,  border_color = NA,
+                       cluster_cols=F, scale = "row", cluster_rows=F) 
+```
+
+# TGFB
+```{r}
+DefaultAssay(fibroblast) <- "dorothea"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("SMAD3","SMAD4")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$TGFB_TF_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "TGFB_TF_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+# IL-1b
+```{r}
+DefaultAssay(fibroblast) <- "dorothea"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- c("ATF2","JUN","JUNB","NFKB1","NFKB2","STAT3")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$IL1b_TF_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "IL1b_TF_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1.5))
+```
+
+```{r}
+plot_density(fibroblast, features = c("TGFB_TF_z", "IL1b_TF_z"), reduction = 'umap')
+```
+
+# Progeny
+```{r}
+Idents(fibroblast) <- "HF.etiology"
+```
+
+```{r}
+## We create a data frame with the specification of the cells that belong to 
+## each cluster to match with the Progeny scores.
+CellsClusters <- data.frame(Cell = names(Idents(fibroblast)), 
+    CellType = as.character(Idents(fibroblast)),
+    stringsAsFactors = FALSE)
+```
+
+```{r}
+## We compute the Progeny activity scores and add them to our Seurat object
+## as a new assay called Progeny. 
+fibroblast <- progeny(fibroblast, scale=FALSE, organism="Human", top=500, perm=1, 
+    return_assay = TRUE)
+
+## We can now directly apply Seurat functions in our Progeny scores. 
+## For instance, we scale the pathway activity scores. 
+fibroblast <- Seurat::ScaleData(fibroblast, assay = "progeny") 
+
+## We transform Progeny scores into a data frame to better handling the results
+progeny_scores_df <- 
+    as.data.frame(t(GetAssayData(fibroblast, slot = "scale.data", 
+        assay = "progeny"))) %>%
+    rownames_to_column("Cell") %>%
+    gather(Pathway, Activity, -Cell) 
+
+## We match Progeny scores with the cell clusters.
+progeny_scores_df <- inner_join(progeny_scores_df, CellsClusters)
+
+## We summarize the Progeny scores by cellpopulation
+summarized_progeny_scores <- progeny_scores_df %>% 
+    group_by(Pathway, CellType) %>%
+    summarise(avg = mean(Activity), std = sd(Activity))
+```
+
+```{r}
+## We prepare the data for the plot
+summarized_progeny_scores_df <- summarized_progeny_scores %>%
+    dplyr::select(-std) %>%   
+    spread(Pathway, avg) %>%
+    data.frame(row.names = 1, check.names = FALSE, stringsAsFactors = FALSE) 
+```
+
+```{r}
+paletteLength = 100
+myColor = colorRampPalette(c("Darkblue", "white","red"))(paletteLength)
+
+progenyBreaks = c(seq(min(summarized_progeny_scores_df), 0, 
+                      length.out=ceiling(paletteLength/2) + 1),
+                  seq(max(summarized_progeny_scores_df)/paletteLength, 
+                      max(summarized_progeny_scores_df), 
+                      length.out=floor(paletteLength/2)))
+
+progeny_hmap = pheatmap(t(summarized_progeny_scores_df[,-1]),fontsize=14, 
+                        fontsize_row = 10, 
+                        color=myColor, breaks = progenyBreaks, 
+                        main = "PROGENy (500)", angle_col = 45,
+                        treeheight_col = 0,  border_color = NA, scale = "row")
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+FeaturePlot(fibroblast, reduction = 'umap', features = "LEPR") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1)) 
+```
+
+```{r}
+plot_density(fibroblast, features = "LEPR", reduction = "umap")
+```
+```{r}
+VlnPlot(fibroblast, features = "LEPR", group.by = "functional.cluster", sort = TRUE)
+VlnPlot(fibroblast, features = "LEPR", group.by = "HF.etiology", sort = TRUE)
+```
+
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+FeaturePlot(fibroblast, reduction = 'umap', features = "IL1R1") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1)) 
+```
+
+# Compare genes across disease using single cell DE
+```{r}
+Idents(fibroblast) <- "sample"
+
+fun <- function(x) {
+  if (x == "sample1") {"ICM"} 
+  else if (x == "sample2") {"ICM"}
+  else if (x == "sample4") {"AMI <1wk"}
+  else if (x == "sample5") {"AMI <3mo"}
+  else if (x == "sample6") {"NICM"}
+  else if (x == "sample7") {"NICM"}
+  else if (x == "sample8") {"AMI <3mo"}
+  else if (x == "sample9") {"NICM"}
+  else if (x == "sample12") {"ICM"}
+  else if (x == "sample13") {"Donor"}
+  else if (x == "sample15") {"NICM"}
+  else if (x == "sample17") {"ICM"}
+  else if (x == "sample27") {"ICM"}
+  else if (x == "sample28") {"ICM"}
+  else if (x == "sample29") {"NICM"}
+  else if (x == "sample30") {"NICM"}
+  else if (x == "sample32") {"Donor"}
+  else if (x == "sample33") {"Donor"}
+  else if (x == "sample34") {"Donor"}
+  else if (x == "sample39") {"Donor"}
+  else if (x == "sample41") {"Donor"}
+  else if (x == "sample42") {"AMI <1wk"}
+}
+fibroblast$MI_category <- mapply(fun, fibroblast$sample)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- 'SCT'
+Idents(fibroblast) <- "MI_category"
+rna.rnamarkers <- FindAllMarkers(fibroblast, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_GEX_MI_category.csv", quote = FALSE)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- 'CITE'
+Idents(fibroblast) <- "MI_category"
+rna.rnamarkers <- FindAllMarkers(fibroblast, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_CITE_MI_category.csv", quote = FALSE)
+```
+
+# Donor Fib
+```{r}
+donor_genes <- filter(rna.rnamarkers, rna.rnamarkers$cluster == "Donor")
+donor_genes <- filter(donor_genes, donor_genes$avg_log2FC > 0.58)
+donor_genes <- filter(donor_genes, donor_genes$p_val_adj < 0.05)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- donor_genes$gene
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$Donor_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "Donor_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.75))
+```
+
+# <1wk Fib
+```{r}
+onewk_genes <- filter(rna.rnamarkers, rna.rnamarkers$cluster == "AMI <1wk")
+onewk_genes <- filter(onewk_genes, onewk_genes$avg_log2FC > 0.58)
+onewk_genes <- filter(onewk_genes, onewk_genes$p_val_adj < 0.05)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- onewk_genes$gene
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$onewkAMI_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "onewkAMI_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.75))
+```
+
+# <3mo Fib
+```{r}
+threemo_genes <- filter(rna.rnamarkers, rna.rnamarkers$cluster == "AMI <3mo")
+threemo_genes <- filter(threemo_genes, threemo_genes$avg_log2FC > 0.58)
+threemo_genes <- filter(threemo_genes, threemo_genes$p_val_adj < 0.05)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- threemo_genes$gene
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$threemoAMI_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "threemoAMI_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.75))
+```
+
+# ICM
+```{r}
+ICM_genes <- filter(rna.rnamarkers, rna.rnamarkers$cluster == "ICM")
+ICM_genes <- filter(ICM_genes, ICM_genes$avg_log2FC > 0.58)
+ICM_genes <- filter(ICM_genes, ICM_genes$p_val_adj < 0.05)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- ICM_genes$gene
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$ICM_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "ICM_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.75))
+```
+
+# NICM
+```{r}
+NICM_genes <- filter(rna.rnamarkers, rna.rnamarkers$cluster == "NICM")
+NICM_genes <- filter(NICM_genes, NICM_genes$avg_log2FC > 0.58)
+NICM_genes <- filter(NICM_genes, NICM_genes$p_val_adj < 0.05)
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- NICM_genes$gene
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$NICM_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "NICM_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.75))
+```
+
+```{r}
+currCell_subset.averageexpression <- aggregate(fibroblast@meta.data[, c("Donor_z","onewkAMI_z","threemoAMI_z","ICM_z","NICM_z")], list(fibroblast@meta.data$functional.cluster), mean)
+currCell_subset.averageexpression <- as.data.frame(currCell_subset.averageexpression)
+
+result <- currCell_subset.averageexpression[-1]
+row.names(result) <- currCell_subset.averageexpression$Group.1
+result <- as.matrix(result)
+```
+
+```{r}
+pheatmap(result, scale="row", features = genes,col=colorspace::diverge_hsv(240), cexCol=0.5, cellwidth=8, cluster_rows=TRUE, fontsize_row=6, fontsize_col=6, cluster_cols = FALSE, legend = FALSE, cellheight = 8, border_color = NA)
+```
+
+```{r}
+d <- rna.rnamarkers
+d$cluster <- factor(d$cluster, levels = c("Donor", "AMI <1wk", "AMI <3mo", "ICM", "NICM"))
+d <- filter(d, avg_log2FC > 0.58)
+d <- filter(d, p_val_adj < 0.05)
+d_new <- d[c("gene", "cluster")]
+```
+
+```{r}
+eg <- bitr(as.character(d_new$gene), fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")
+d_new <- filter(d_new, gene %in% eg$SYMBOL)
+d_new_enterzID <- merge(d_new, eg, by.x = "gene", by.y = "SYMBOL")
+d_new_enterzID <- d_new_enterzID[c("ENTREZID", "cluster")]
+geneList <- unstack(d_new_enterzID)
+geneList
+```
+
+```{r}
+ck <- compareCluster(geneCluster = geneList, fun = enrichGO, OrgDb="org.Hs.eg.db")
+ck <- setReadable(ck, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
+```
+
+```{r}
+dotplot(ck, font.size = 8) + theme(axis.text.x=element_text(angle=90, hjust=1))
+```
+
+# Compare Donor to each disease group
+
+# Donor vs <1wk AMI
+```{r}
+Idents(fibroblast) <- "MI_category"
+fibroblast_subset <- subset(fibroblast, idents = c("Donor", "AMI <1wk"))
+
+DefaultAssay(fibroblast_subset) <- 'SCT'
+rna.rnamarkers <- FindAllMarkers(fibroblast_subset, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_HF/DE_GEX_donor_vs_1wkAMI.csv", quote = FALSE)
+
+DefaultAssay(fibroblast_subset) <- 'CITE'
+rna.rnamarkers <- FindAllMarkers(fibroblast_subset, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_HF/DE_CITE_donor_vs_1wkAMI.csv", quote = FALSE)
+```
+
+# Donor vs <3mo AMI
+```{r}
+Idents(fibroblast) <- "MI_category"
+fibroblast_subset <- subset(fibroblast, idents = c("Donor", "AMI <3mo"))
+
+DefaultAssay(fibroblast_subset) <- 'SCT'
+rna.rnamarkers <- FindAllMarkers(fibroblast_subset, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_HF/DE_GEX_donor_vs_3moAMI.csv", quote = FALSE)
+
+DefaultAssay(fibroblast_subset) <- 'CITE'
+rna.rnamarkers <- FindAllMarkers(fibroblast_subset, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_HF/DE_CITE_donor_vs_3moAMI.csv", quote = FALSE)
+```
+
+# Donor vs ICM
+```{r}
+Idents(fibroblast) <- "MI_category"
+fibroblast_subset <- subset(fibroblast, idents = c("Donor", "ICM"))
+
+DefaultAssay(fibroblast_subset) <- 'SCT'
+rna.rnamarkers <- FindAllMarkers(fibroblast_subset, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_HF/DE_GEX_donor_vs_ICM.csv", quote = FALSE)
+
+DefaultAssay(fibroblast_subset) <- 'CITE'
+rna.rnamarkers <- FindAllMarkers(fibroblast_subset, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_HF/DE_CITE_donor_vs_ICM.csv", quote = FALSE)
+```
+
+# Donor vs NICM
+```{r}
+Idents(fibroblast) <- "MI_category"
+fibroblast_subset <- subset(fibroblast, idents = c("Donor", "NICM"))
+
+DefaultAssay(fibroblast_subset) <- 'SCT'
+rna.rnamarkers <- FindAllMarkers(fibroblast_subset, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_HF/DE_GEX_donor_vs_NICM.csv", quote = FALSE)
+
+DefaultAssay(fibroblast_subset) <- 'CITE'
+rna.rnamarkers <- FindAllMarkers(fibroblast_subset, only.pos = TRUE, min.pct = 0.1, logfc.threshold = 0.25)
+write.csv(rna.rnamarkers, file ="./DE_HF/DE_CITE_donor_vs_NICM.csv", quote = FALSE)
+```
+
+
+# Compare the DE Genes across conditions
+```{r}
+onewkAMI_genes <- read.csv2('./DE_HF/DE_GEX_donor_vs_1wkAMI.csv', header=TRUE, sep=',', row.names = 1)
+onewkAMI_genes$avg_log2FC <- as.double(onewkAMI_genes$avg_log2FC)
+onewkAMI_genes$p_val_adj <- as.double(onewkAMI_genes$p_val_adj)
+
+threemoAMI_genes <- read.csv2('./DE_HF/DE_GEX_donor_vs_3moAMI.csv', header=TRUE, sep=',', row.names = 1)
+threemoAMI_genes$avg_log2FC <- as.double(threemoAMI_genes$avg_log2FC)
+threemoAMI_genes$p_val_adj <- as.double(threemoAMI_genes$p_val_adj)
+
+ICM_genes <- read.csv2('./DE_HF/DE_GEX_donor_vs_ICM.csv', header=TRUE, sep=',', row.names = 1)
+ICM_genes$avg_log2FC <- as.double(ICM_genes$avg_log2FC)
+ICM_genes$p_val_adj <- as.double(ICM_genes$p_val_adj)
+
+NICM_genes <- read.csv2('./DE_HF/DE_GEX_donor_vs_NICM.csv', header=TRUE, sep=',', row.names = 1)
+NICM_genes$avg_log2FC <- as.double(NICM_genes$avg_log2FC)
+NICM_genes$p_val_adj <- as.double(NICM_genes$p_val_adj)
+
+onewkAMI_genes <- filter(onewkAMI_genes, onewkAMI_genes$avg_log2FC > 0.58)
+onewkAMI_genes <- filter(onewkAMI_genes, onewkAMI_genes$p_val_adj < 0.05)
+onewkAMI_genes <- filter(onewkAMI_genes, onewkAMI_genes$cluster == "AMI <1wk")
+
+threemoAMI_genes <- filter(threemoAMI_genes, threemoAMI_genes$avg_log2FC > 0.58)
+threemoAMI_genes <- filter(threemoAMI_genes, threemoAMI_genes$p_val_adj < 0.05)
+threemoAMI_genes <- filter(threemoAMI_genes, threemoAMI_genes$cluster == "AMI <3mo")
+
+ICM_genes <- filter(ICM_genes, ICM_genes$avg_log2FC > 0.58)
+ICM_genes <- filter(ICM_genes, ICM_genes$p_val_adj < 0.05)
+ICM_genes <- filter(ICM_genes, ICM_genes$cluster == "ICM")
+
+NICM_genes <- filter(NICM_genes, NICM_genes$avg_log2FC > 0.58)
+NICM_genes <- filter(NICM_genes, NICM_genes$p_val_adj < 0.05)
+NICM_genes <- filter(NICM_genes, NICM_genes$cluster == "NICM")
+```
+
+# Ischemic Heart Disease
+```{r}
+length(onewkAMI_genes$gene)
+```
+
+```{r}
+length(Reduce(intersect,list(onewkAMI_genes$gene, threemoAMI_genes$gene, ICM_genes$gene)))
+```
+
+```{r}
+length(Reduce(intersect,list(onewkAMI_genes$gene, threemoAMI_genes$gene)))
+length(Reduce(intersect,list(onewkAMI_genes$gene, ICM_genes$gene)))
+length(Reduce(intersect,list(threemoAMI_genes$gene, ICM_genes$gene)))
+```
+
+```{r}
+length(onewkAMI_genes$gene)
+length(threemoAMI_genes$gene)
+length(ICM_genes$gene)
+```
+
+# <1wk AMI
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- setdiff(setdiff(onewkAMI_genes$gene, threemoAMI_genes$gene), ICM_genes$gene)
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$onewkMI_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "onewkMI_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+
+plot_density(fibroblast, features = "onewkMI_z", reduction = 'umap')
+```
+# <3moMI AMI
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- setdiff(setdiff(threemoAMI_genes$gene, onewkAMI_genes$gene), ICM_genes$gene)
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$threemoMI_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "threemoMI_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+
+plot_density(fibroblast, features = "threemoMI_z", reduction = 'umap')
+```
+
+# ICM
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- setdiff(setdiff(ICM_genes$gene, threemoAMI_genes$gene), onewkAMI_genes$gene)
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$ICM_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "ICM_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+
+plot_density(fibroblast, features = "ICM_z", reduction = 'umap')
+```
+
+```{r}
+plot_density(fibroblast, features = "FAP", reduction = 'umap')
+```
+
+
+
+# Chronic heart failure
+```{r}
+Reduce(intersect,list(threemoAMI_genes$gene, ICM_genes$gene, NICM_genes$gene))
+```
+
+```{r}
+"FAP" %in% threemoAMI_genes$gene
+```
+
+```{r}
+length(Reduce(intersect,list(threemoAMI_genes$gene, ICM_genes$gene)))
+length(Reduce(intersect,list(threemoAMI_genes$gene, NICM_genes$gene)))
+length(Reduce(intersect,list(ICM_genes$gene, NICM_genes$gene)))
+```
+
+```{r}
+length(threemoAMI_genes$gene)
+length(ICM_genes$gene)
+length(NICM_genes$gene)
+```
+
+##########################################################
+# Palantir
+```{r}
+fibroblast_meta <- read.csv2('./panels/palantir/fibro_palantir_meta_data.csv', header=TRUE, sep=',', row.names = 1)
+fibroblast_2 <- AddMetaData(fibroblast, fibroblast_meta)
+
+fibroblast_2@meta.data$pseudotime <- as.numeric(as.character(fibroblast_2@meta.data$pseudotime))
+fibroblast_2@meta.data$entropy <- as.numeric(as.character(fibroblast_2@meta.data$entropy))
+```
+
+```{r}
+FeaturePlot(fibroblast_2, reduction = "fdl", features = c("pseudotime"))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,0.75)) 
+
+FeaturePlot(fibroblast_2, reduction = "fdl", features = c("entropy"))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,1.25)) 
+```
+
+```{r}
+fibroblast_meta <- data.frame(fibroblast_meta)
+fibroblast_meta
+```
+
+```{r}
+fibroblast_meta$pseudotime <- as.numeric(fibroblast_meta$pseudotime)
+fibroblast_meta$entropy <- as.numeric(fibroblast_meta$entropy)
+fibroblast_meta$POSTN..Fib <- as.numeric(fibroblast_meta$POSTN..Fib)
+fibroblast_meta$APOE.Fib <- as.numeric(fibroblast_meta$APOE.Fib)
+fibroblast_meta$Myofibroblast <- as.numeric(fibroblast_meta$Myofibroblast)
+fibroblast_meta$ClusterName <- as.character(fibroblast_meta$ClusterName)
+fibroblast_2 <- AddMetaData(fibroblast, fibroblast_meta)
+```
+
+```{r}
+FeaturePlot(fibroblast_2, reduction = "fdl", features = c("POSTN..Fib"))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,0.5)) 
+
+FeaturePlot(fibroblast_2, reduction = "fdl", features = c("APOE.Fib"))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,0.5)) 
+
+FeaturePlot(fibroblast_2, reduction = "fdl", features = c("Myofibroblast"))+ scale_color_gradientn(colors=paletteContinuous("horizon"), oob=scales::squish, limits=c(0,0.5)) 
+```
+
+```{r}
+ggplot(fibroblast_meta, aes(x=pseudotime, y=POSTN..Fib, color=ClusterName)) + geom_point(size=1, alpha=1) + scale_color_manual(values=paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion")) + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+ggplot(fibroblast_meta, aes(x=pseudotime, y=Myofibroblast, color=ClusterName)) + geom_point(size=1, alpha=1) + scale_color_manual(values=paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion")) + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+```
+
+```{r}
+ggplot(fibroblast_meta, aes(x=pseudotime, y=entropy, color=ClusterName)) + geom_point(size=1, alpha=1) + scale_color_manual(values=paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion")) + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+```
+
+```{r}
+ggplot(fibroblast_meta, aes(x=pseudotime, y=entropy, color=ClusterName)) + geom_point(size=1, alpha=1) + scale_color_manual(values=paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion")) + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black")) + facet_wrap(facets = vars(Group))
+```
+
+# Plot pseudobulk genes
+```{r}
+pseudobulk_genes <- read.csv2("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary\ Projects/Amgen_ICM_CITEseq/Human_CITEseq/pseudobulk/DE_analysis/HF_Donor/Fibroblast_Donor_vs_HF_sig_genes.csv", header=TRUE, sep=',', row.names = 1)
+
+pseudobulk_genes <- as.data.frame(pseudobulk_genes)
+pseudobulk_genes$log2FoldChange <- as.numeric(pseudobulk_genes$log2FoldChange)
+pseudobulk_genes$baseMean <- as.numeric(pseudobulk_genes$baseMean)
+
+pseudobulk_genes <- filter(pseudobulk_genes, log2FoldChange < -0.58)
+pseudobulk_genes <- filter(pseudobulk_genes, baseMean > 500)
+```
+
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- rownames(pseudobulk_genes)
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$HFPseudobulk_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "HFPseudobulk_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.75))
+```
+
+```{r}
+pseudobulk_genes <- read.csv2("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary\ Projects/Amgen_ICM_CITEseq/Human_CITEseq/pseudobulk/DE_analysis/HF_Donor/Fibroblast_Donor_vs_HF_sig_genes.csv", header=TRUE, sep=',', row.names = 1)
+
+pseudobulk_genes <- as.data.frame(pseudobulk_genes)
+pseudobulk_genes$log2FoldChange <- as.numeric(pseudobulk_genes$log2FoldChange)
+pseudobulk_genes$baseMean <- as.numeric(pseudobulk_genes$baseMean)
+
+pseudobulk_genes <- filter(pseudobulk_genes, log2FoldChange > 0.58)
+pseudobulk_genes <- filter(pseudobulk_genes, baseMean > 500)
+```
+
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+expdata <- GetAssayData(fibroblast)
+Pop1 <- rownames(pseudobulk_genes)
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+fibroblast@meta.data$DonorPseudobulk_z<-z_scores[1,]
+FeaturePlot(object=fibroblast, features = "DonorPseudobulk_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,0.5))
+```
+
+```{r}
+plot_density(fibroblast, features = "HFPseudobulk_z", reduction = "umap")
+plot_density(fibroblast, features = "DonorPseudobulk_z", reduction = "umap")
+```
+
+
+# Completely Integrated object
+```{r}
+integrated <- readRDS("/Volumes/klavine/Active/Junedh/Amgen_ICM/Fib.integration.Rdata/Fib.human.mouse.invitro.noiHCF.integrated.sctransform.k.anchor5.rds")
+```
+
+```{r}
+Idents(integrated) <- "Group"
+integrated<-BuildClusterTree(integrated,dims=1:50)
+PlotClusterTree(integrated)
+tree <- Tool(object = integrated, slot = 'BuildClusterTree')
+plot(tree)
+```
+```{r}
+DimPlot(integrated)
+```
+```{r}
+DefaultAssay(integrated) <- "RNA"
+integrated <- NormalizeData(integrated)
+```
+
+```{r}
+plot_density(integrated, features = c("ACTA2"))
+```
+
+# Fibroblast State Signatures from Brandom/Milena's Paper
+# Homeostasis
+```{r}
+DefaultAssay(integrated) <- "RNA"
+expdata <- GetAssayData(integrated)
+Pop1 <- c("COL1A1","PDGFRA","VIM","DCN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+integrated@meta.data$H1_z<-z_scores[1,]
+FeaturePlot(object=integrated, features = "H1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+DefaultAssay(integrated) <- "RNA"
+expdata <- GetAssayData(integrated)
+Pop1 <- c("WIF1","DKK3","SFRP2","FRZB")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+integrated@meta.data$H2_z<-z_scores[1,]
+FeaturePlot(object=integrated, features = "H2_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Injury Response
+```{r}
+DefaultAssay(integrated) <- "RNA"
+expdata <- GetAssayData(integrated)
+Pop1 <- c("MT1-2","CCL2","CXCL1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+integrated@meta.data$InjuryResponse_z<-z_scores[1,]
+FeaturePlot(object=integrated, features = "InjuryResponse_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,2))
+```
+
+# Myofibroblast
+```{r}
+DefaultAssay(integrated) <- "RNA"
+expdata <- GetAssayData(integrated)
+Pop1 <- c("ACTA2","CTHRC1","POSTN","FAP")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+integrated@meta.data$Myofibroblast_z<-z_scores[1,]
+FeaturePlot(object=integrated, features = "Myofibroblast_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Matrifibrocyte
+```{r}
+DefaultAssay(integrated) <- "RNA"
+expdata <- GetAssayData(integrated)
+Pop1 <- c("COMP","CHAD","CLIP2")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+integrated@meta.data$Matrifibrocyte_z<-z_scores[1,]
+FeaturePlot(object=integrated, features = "Matrifibrocyte_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Late Resolution
+```{r}
+DefaultAssay(integrated) <- "RNA"
+expdata <- GetAssayData(integrated)
+Pop1 <- c("COL8A1","MEOX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+integrated@meta.data$LateResolution_z<-z_scores[1,]
+FeaturePlot(object=integrated, features = "LateResolution_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+sample <- readRDS("Fibroblast.dim50.wharmony.filtered.interation3.annotated.rds")
+```
+
+```{r}
+DefaultAssay(sample) <- "CITE"
+FeaturePlot(sample, reduction = 'umap', features = "CITE-CD63", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,40)) 
+
+FeaturePlot(sample, reduction = 'umap', features = "CITE-FAP", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("blueYellow"), oob=scales::squish, limits=c(0,10)) 
+```
+
+```{r}
+VlnPlot(sample, features = "CITE-FAP", group.by = "HF.etiology", pt.size = 0)
+VlnPlot(sample, features = "CITE-CD63", group.by = "HF.etiology", pt.size = 0)
+```
+
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+FeaturePlot(fibroblast, reduction = 'umap', features = "TWIST1", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+plot_density(fibroblast, features = "TWIST1", reduction = "umap")
+```
+
+```{r}
+DotPlot(fibroblast, features = "TWIST1", group.by = "HF.etiology")
+DotPlot(fibroblast, features = "TWIST1", group.by = "functional.cluster")
+```
+
+```{r}
+DefaultAssay(global) <- "SCT"
+plot_density(global, features = "LOX", reduction = 'sct.dsb_wnn_umap')
+```
+
+```{r}
+FeaturePlot(fibroblast, reduction = 'umap', features = "EFEMP1", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,3))
+
+FeaturePlot(fibroblast, reduction = 'umap', features = "FAP", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,3))
+```
+
+
+
+
+
+
+
+
+```{r}
+DotPlot(fibroblast, features = c("POSTN","CPE","ACTG1","LOXL3","SLIT2","PXDN","TNFRSF11B","CRLF1","COL12A1","IGFBP2","COL16A1","ECM1","GDF6","FN1","BMP1","DNAJB11","SFRP1","PLOD1","LTP2","COL1A1","INHBA","LAMA2","SEMA7A","TIMP3","MATN2","LOX","LAMA4","FMOD"), group.by = "HF.etiology") + RotatedAxis()
+```
+
+######## Dusseldorf
+```{r}
+g_list <- c("ACTG1","BMP1","COL12A1","COL16A1","COL1A1","CPE","CRLF1","DNAJB11","ECM1","FMOD","FN1","GDF6","IGFBP2","INHBA","LAMA2","LAMA4","LOX","LOXL3","LTBP2","MATN2","PLOD1","POSTN","PXDN","SEMA7A","SFRP1","SLIT2","TIMP3","TNFRSF11B")
+```
+
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+sample.averageexpression <- AverageExpression(fibroblast, features = g_list, assays = "SCT", group.by = c("functional.cluster"))
+
+pheatmap(sample.averageexpression[[1]], scale="row", col=paletteContinuous("solarExtra"), cluster_rows=TRUE, fontsize_row=6, fontsize_col=6, cluster_cols = TRUE, legend = TRUE, cellwidth = 8, cellheight = 8, border_color=NA)
+```
+
+```{r}
+pdf("CITEseq_fibroblasts-heatmap_condition.pdf", useDingbats = FALSE)
+
+DotPlot(fibroblast, features = g_list, group.by = "HF.etiology", cols = "RdYlBu") + RotatedAxis() + coord_flip()
+dev.off() 
+```
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+sample.averageexpression <- AverageExpression(fibroblast, features = g_list, assays = "SCT", group.by = c("HF.etiology"))
+
+pheatmap(sample.averageexpression[[1]], scale="row", col=paletteContinuous("solarExtra"), cluster_rows=TRUE, fontsize_row=6, fontsize_col=6, cluster_cols = TRUE, legend = TRUE, cellwidth = 8, cellheight = 8, border_color=NA)
+```
+
+```{r}
+fibroblast <- readRDS("./Fibroblast.dim50.wharmony.filtered.interation3.annotated.rds")
+```
+
+```{r}
+#VlnPlot(fibroblast, features = "IL1R1", group.by = "functional.cluster")
+VlnPlot(fibroblast, features = "CITE-FAP", group.by = "HF.etiology", pt.size = 0)
+```
+
+```{r}
+plot_density(fibroblast, features = "AEBP1", reduction = "umap")
+plot_density(fibroblast, features = "POSTN", reduction = "umap")
+plot_density(fibroblast, features = "RUNX1", reduction = "umap")
+plot_density(fibroblast, features = "MEOX1", reduction = "umap")
+plot_density(fibroblast, features = "ACTA2", reduction = "umap")
+```
+
+
+
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+sample.averageexpression <- AverageExpression(fibroblast, features = c("FAP","POSTN","ACTA2","EFEMP1"), assays = "SCT", group.by = c("functional.cluster"))
+
+pheatmap(sample.averageexpression[[1]], scale="row", col=paletteContinuous("solarExtra"), cluster_rows=TRUE, fontsize_row=6, fontsize_col=6, cluster_cols = TRUE, legend = TRUE, cellwidth = 8, cellheight = 8, border_color=NA)
+```
+```{r}
+DefaultAssay(fibroblast) <- "SCT"
+FeaturePlot(fibroblast, reduction = 'umap', features = "CCL19") + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1))
+plot_density(fibroblast, features = "CCL19", reduction = 'umap')
+```
+
+```{r}
+fibroblast <- readRDS("Fibroblast.dim50.wharmony.filtered.interation3.annotated.rds")
+#myeloid <- readRDS("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary_Projects/Amgen_Heart/Amgen_ICM_CITEseq/Human_CITEseq/myeloid/final/human_myeloid_final.rds")
+```
+
+```{r}
+global <- readRDS("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary_Projects/Amgen_Heart/Amgen_ICM_CITEseq/Human_CITEseq/global_object/final_global_annotated.rds")
+```
+
+```{r}
+DefaultAssay(global) <- "SCT"
+FeaturePlot(global, reduction = 'sct.dsb_wnn_umap', features = "IL1RAP", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,1))
+```
+
+# Fibroblast IL1R
+```{r}
+DotPlot(fibroblast, features = c("IL1R1","IL1RAP"), group.by = "HF.etiology")
+```
+
+# Myeloid IL1R
+```{r}
+DotPlot(myeloid, features = "IL1R1", group.by = "cell_type")
+```
+
+```{r}
+DefaultAssay(myeloid) <- "CITE"
+FeaturePlot(myeloid, reduction = 'umap', features = "CITE-CX3CR1", raster=FALSE) + scale_color_gradientn(colors=paletteContinuous("solarExtra"), oob=scales::squish, limits=c(0,5))
+```
+
+```{r}
+pdf("/Users/jamrute/Desktop/pdf_panels/2p_top.pdf", useDingbats = FALSE, width=7, height=4)
+DefaultAssay(fibroblast) <- "SCT"
+plot_density(fibroblast, features = "MEOX1", reduction = "umap")
+dev.off()
+```
+
+
+
+
+
+

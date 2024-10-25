@@ -1,0 +1,974 @@
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(sctransform)
+library(ggplot2)
+library(harmony)
+library(ArchR)
+library(ggsci)
+library(SeuratDisk)
+library(harmony)
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(dplyr)
+library(sctransform)
+library(pheatmap)
+library(Matrix)
+library(RColorBrewer)
+library(scales)
+library(data.table)
+library(stats)
+library("Nebulosa")
+library(ggsci)
+library(ArchR)
+library(biomaRt)
+library(Seurat)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(sctransform)
+library(ggplot2)
+library(pheatmap)
+library(Seurat)
+library(ggplot2)
+library(Matrix)
+library(RColorBrewer)
+library(dplyr)
+library(scales)
+library(data.table)
+library(stats)
+library("Nebulosa")
+```
+
+```{r}
+fibroblast <- readRDS("../Fibroblast.dim50.wharmony.filtered.interation3.annotated.rds")
+```
+
+```{r}
+DimPlot(fibroblast, reduction = 'umap', group.by = 'functional.cluster', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))
+```
+
+# NHCF
+```{r}
+NHCF <- readRDS("./NHCF/NHCF.rds")
+```
+
+```{r}
+anchors_NHCF <- FindTransferAnchors(
+  reference = fibroblast,
+  query = NHCF,
+  normalization.method = "SCT",
+  reference.reduction = "spca",
+  dims = 1:50
+)
+```
+
+```{r}
+NHCF <- MapQuery(
+  anchorset = anchors_NHCF,
+  query = NHCF,
+  reference = fibroblast,
+  refdata = list(
+    celltype.l1 = "functional.cluster",
+    predicted_CITE = "CITE"
+  ),
+  reference.reduction = "spca", 
+  reduction.model = "umap"
+)
+```
+
+```{r}
+DimPlot(NHCF, reduction = 'ref.umap', group.by = 'predicted.celltype.l1', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))
+
+DimPlot(NHCF, reduction = 'umap', group.by = 'predicted.celltype.l1', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))
+```
+
+```{r}
+DimPlot(NHCF, reduction = 'ref.umap', group.by = 'predicted.celltype.l1', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"), split.by = "group", ncol=3)
+```
+
+```{r}
+NHCF$predicted.celltype.l1 <- factor(NHCF$predicted.celltype.l1, levels = c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","DLK1 Fib","PTGDS Fib","APOD Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","PLA2G2A Fib","POLCE2.MFAP5 Fib","PRG4 Fib"), ordered = TRUE)
+```
+
+```{r}
+paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion")
+```
+
+```{r}
+ggplot(NHCF@meta.data, aes(x=group, fill=predicted.celltype.l1)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) +  scale_fill_manual(values=c("#D51F26","#272E6A","#208A42","#89288F","#C06CAB","#D8A767","#89C75F")) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+breaksList = seq(0, 1, by = 1/240)
+NHCF@assays[["prediction.score.celltype.l1"]]@counts <- NHCF@assays[["prediction.score.celltype.l1"]]@data
+
+DefaultAssay(NHCF) <- "prediction.score.celltype.l1"
+Idents(NHCF) <- "predicted.celltype.l1"
+sample.averageexpression <- AverageExpression(NHCF,  features = rownames(NHCF@assays[["prediction.score.celltype.l1"]]), assays = "prediction.score.celltype.l1", group.by = "predicted.celltype.l1", slot = "counts")
+sample.averageexpression[[1]] <- sample.averageexpression[[1]][c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","DLK1 Fib","PTGDS Fib","APOD Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","PLA2G2A Fib","POLCE2.MFAP5 Fib","PRG4 Fib"),]
+sample.averageexpression <- as.matrix(sample.averageexpression)[[1]]
+pheatmap(sample.averageexpression, scale="none", col=viridis(240), cexCol=0.5, cellwidth=10, cluster_rows=FALSE, fontsize_row=6, fontsize_col=6, cluster_cols = FALSE, legend = TRUE, border_color = NA, cellheight=10,breaks = breaksList)
+```
+
+```{r}
+FeaturePlot(NHCF, features = c("POSTN+ Fib"),  reduction = "ref.umap", cols = c("lightgrey", "darkred")) & theme(plot.title = element_text(size = 10))
+```
+
+```{r}
+saveRDS(NHCF, "./NHCF/mapping/NHCF_mapped.rds")
+```
+
+# NHDF
+```{r}
+NHDF <- readRDS("./NHDF/NHDF.rds")
+```
+
+```{r}
+anchors_NHDF <- FindTransferAnchors(
+  reference = fibroblast,
+  query = NHDF,
+  normalization.method = "SCT",
+  reference.reduction = "spca",
+  dims = 1:50
+)
+```
+
+```{r}
+NHDF <- MapQuery(
+  anchorset = anchors_NHDF,
+  query = NHDF,
+  reference = fibroblast,
+  refdata = list(
+    celltype.l1 = "functional.cluster",
+    predicted_CITE = "CITE"
+  ),
+  reference.reduction = "spca", 
+  reduction.model = "umap"
+)
+```
+
+```{r}
+DimPlot(NHDF, reduction = 'ref.umap', group.by = 'predicted.celltype.l1', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))
+```
+
+```{r}
+Idents(NHDF) <- "group"
+NHDF <- subset(NHDF, idents = c("NHDF_72h_Control","NHDF_72h_IL1b","NHDF_72h_TGFb"))
+unique(NHDF$group)
+```
+
+
+```{r}
+DimPlot(NHDF, reduction = 'ref.umap', group.by = 'predicted.celltype.l1', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"), split.by = "group", ncol=3)
+```
+
+```{r}
+NHDF$predicted.celltype.l1 <- factor(NHDF$predicted.celltype.l1, levels = c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","DLK1 Fib","PTGDS Fib","APOD Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","PLA2G2A Fib","POLCE2.MFAP5 Fib","PRG4 Fib"), ordered = TRUE)
+```
+
+```{r}
+paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion")
+```
+
+```{r}
+ggplot(NHDF@meta.data, aes(x=group, fill=predicted.celltype.l1)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) + scale_fill_manual(values=c("#D51F26","#272E6A","#208A42","#89288F","#FEE500","#8A9FD1","#C06CAB","#D8A767","#90D5E4","#F37B7D")) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+breaksList = seq(0, 1, by = 1/240)
+NHDF@assays[["prediction.score.celltype.l1"]]@counts <- NHDF@assays[["prediction.score.celltype.l1"]]@data
+
+DefaultAssay(NHDF) <- "prediction.score.celltype.l1"
+Idents(NHDF) <- "predicted.celltype.l1"
+sample.averageexpression <- AverageExpression(NHDF,  features = rownames(NHDF@assays[["prediction.score.celltype.l1"]]), assays = "prediction.score.celltype.l1", group.by = "predicted.celltype.l1", slot = "counts")
+sample.averageexpression[[1]] <- sample.averageexpression[[1]][c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","DLK1 Fib","PTGDS Fib","APOD Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","PLA2G2A Fib","POLCE2.MFAP5 Fib","PRG4 Fib"),]
+sample.averageexpression <- as.matrix(sample.averageexpression)[[1]]
+pheatmap(sample.averageexpression, scale="none", col=viridis(240), cexCol=0.5, cellwidth=10, cluster_rows=FALSE, fontsize_row=6, fontsize_col=6, cluster_cols = FALSE, legend = TRUE, border_color = NA, cellheight=10, breaks=breaksList)
+```
+
+```{r}
+FeaturePlot(NHDF, features = c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","PTGDS Fib","APOD Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","POLCE2.MFAP5 Fib"),  reduction = "ref.umap", cols = c("lightgrey", "darkred"), ncol = 4) & theme(plot.title = element_text(size = 10))
+```
+
+```{r}
+saveRDS(NHDF, "./NHDF/mapping/NHDF_mapped.rds")
+```
+
+```{r}
+NHDF <- readRDS("./NHDF/mapping/NHDF_mapped.rds")
+```
+
+```{r}
+FeaturePlot(NHDF, features = c("POSTN+ Fib"),  reduction = "ref.umap", cols = c("lightgrey", "darkred")) & theme(plot.title = element_text(size = 10))
+```
+
+
+# iHCF
+```{r}
+iHCF <- readRDS("./iHCF/iHCF.rds")
+```
+
+```{r}
+anchors_iHCF <- FindTransferAnchors(
+  reference = fibroblast,
+  query = iHCF,
+  normalization.method = "SCT",
+  reference.reduction = "spca",
+  dims = 1:50
+)
+```
+
+```{r}
+iHCF <- MapQuery(
+  anchorset = anchors_iHCF,
+  query = iHCF,
+  reference = fibroblast,
+  refdata = list(
+    celltype.l1 = "functional.cluster",
+    predicted_CITE = "CITE"
+  ),
+  reference.reduction = "spca", 
+  reduction.model = "umap"
+)
+```
+
+```{r}
+DimPlot(iHCF, reduction = 'ref.umap', group.by = 'predicted.celltype.l1', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"))
+```
+
+```{r}
+DimPlot(iHCF, reduction = 'ref.umap', group.by = 'predicted.celltype.l1', label.size = 4, label=FALSE,
+        cols = paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion"), split.by = "group", ncol=3)
+```
+
+```{r}
+iHCF$predicted.celltype.l1 <- factor(iHCF$predicted.celltype.l1, levels = c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","DLK1 Fib","PTGDS Fib","APOD Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","PLA2G2A Fib","POLCE2.MFAP5 Fib","PRG4 Fib"), ordered = TRUE)
+```
+
+```{r}
+paletteDiscrete(unique(fibroblast$functional.cluster), set = "stallion")
+```
+
+```{r}
+ggplot(iHCF@meta.data, aes(x=group, fill=predicted.celltype.l1)) + geom_bar(position = "fill") + theme_linedraw() + theme(axis.text.x = element_text(angle = 90)) + scale_fill_manual(values=c("#D51F26","#272E6A","#208A42","#89288F","#C06CAB","#D8A767","#90D5E4","#89C75F","#9983BD")) + theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank()) 
+```
+
+```{r}
+breaksList = seq(0, 1, by = 1/240)
+iHCF@assays[["prediction.score.celltype.l1"]]@counts <- iHCF@assays[["prediction.score.celltype.l1"]]@data
+
+DefaultAssay(iHCF) <- "prediction.score.celltype.l1"
+Idents(iHCF) <- "predicted.celltype.l1"
+sample.averageexpression <- AverageExpression(iHCF,  features = rownames(iHCF@assays[["prediction.score.celltype.l1"]]), assays = "prediction.score.celltype.l1", group.by = "predicted.celltype.l1", slot = "counts")
+sample.averageexpression[[1]] <- sample.averageexpression[[1]][c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","DLK1 Fib","PTGDS Fib","APOD Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","PLA2G2A Fib","POLCE2.MFAP5 Fib","PRG4 Fib"),]
+sample.averageexpression <- as.matrix(sample.averageexpression)[[1]]
+pheatmap(sample.averageexpression, scale="none", col=viridis(240), cexCol=0.5, cellwidth=10, cluster_rows=FALSE, fontsize_row=6, fontsize_col=6, cluster_cols = FALSE, legend = TRUE, border_color = NA, cellheight=10,breaks = breaksList)
+```
+
+```{r}
+FeaturePlot(iHCF, features = c("ground state Fib","Myofibroblast","CCL2.THBS1 Fib","APOE Fib","GDF15 Fib","POSTN+ Fib","Type I IFN Fib","PLA2G2A Fib","PRG4 Fib"),  reduction = "ref.umap", cols = c("lightgrey", "darkred"), ncol = 4) & theme(plot.title = element_text(size = 10))
+```
+
+```{r}
+saveRDS(iHCF, "./iHCF/mapping/iHCF_mapped.rds")
+```
+
+```{r}
+iHCF <- readRDS("./iHCF/mapping/iHCF_mapped.rds")
+```
+
+```{r}
+FeaturePlot(iHCF, features = c("POSTN+ Fib"),  reduction = "ref.umap", cols = c("lightgrey", "darkred")) & theme(plot.title = element_text(size = 10))
+```
+
+
+# Fibroblast State Signatures from Brandom/Milena's Paper
+# Homeostasis
+```{r}
+DefaultAssay(NHCF) <- "SCT"
+expdata <- GetAssayData(NHCF)
+Pop1 <- c("COL1A1","PDGFRA","VIM","DCN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHCF@meta.data$H1_z<-z_scores[1,]
+FeaturePlot(object=NHCF, features = "H1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+DefaultAssay(NHCF) <- "SCT"
+expdata <- GetAssayData(NHCF)
+Pop1 <- c("WIF1","DKK3","SFRP2","FRZB")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHCF@meta.data$H2_z<-z_scores[1,]
+FeaturePlot(object=NHCF, features = "H2_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Injury Response
+```{r}
+DefaultAssay(NHCF) <- "SCT"
+expdata <- GetAssayData(NHCF)
+Pop1 <- c("MT1-2","CCL2","CXCL1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHCF@meta.data$InjuryResponse_z<-z_scores[1,]
+FeaturePlot(object=NHCF, features = "InjuryResponse_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Myofibroblast
+```{r}
+DefaultAssay(NHCF) <- "SCT"
+expdata <- GetAssayData(NHCF)
+Pop1 <- c("ACTA2","CTHRC1","POSTN","FAP")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHCF@meta.data$Myofibroblast_z<-z_scores[1,]
+FeaturePlot(object=NHCF, features = "Myofibroblast_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Matrifibrocyte
+```{r}
+DefaultAssay(NHCF) <- "SCT"
+expdata <- GetAssayData(NHCF)
+Pop1 <- c("COMP","CHAD","CLIP2")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHCF@meta.data$Matrifibrocyte_z<-z_scores[1,]
+FeaturePlot(object=NHCF, features = "Matrifibrocyte_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Late Resolution
+```{r}
+DefaultAssay(NHCF) <- "SCT"
+expdata <- GetAssayData(NHCF)
+Pop1 <- c("COL8A1","MEOX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHCF@meta.data$LateResolution_z<-z_scores[1,]
+FeaturePlot(object=NHCF, features = "LateResolution_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+NHCF@meta.data
+```
+
+```{r}
+NHCF$group <- factor(NHCF$group, levels = c("NHCF_72h_TGFb", "NHCF_72h_IL1b", "NHCF_72h_Control"))
+```
+
+```{r}
+VlnPlot(NHCF, features = c("H1_z","H2_z","InjuryResponse_z","Myofibroblast_z","Matrifibrocyte_z"), group.by = "group", pt.size = 0, stack = TRUE, cols = pal_npg(palette = c("nrc"), alpha = 1)(5)) + NoLegend()
+```
+
+
+
+# Fibroblast State Signatures from Brandom/Milena's Paper
+# Homeostasis
+```{r}
+DefaultAssay(NHDF) <- "SCT"
+expdata <- GetAssayData(NHDF)
+Pop1 <- c("COL1A1","PDGFRA","VIM","DCN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHDF@meta.data$H1_z<-z_scores[1,]
+FeaturePlot(object=NHDF, features = "H1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+DefaultAssay(NHDF) <- "SCT"
+expdata <- GetAssayData(NHDF)
+Pop1 <- c("WIF1","DKK3","SFRP2","FRZB")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHDF@meta.data$H2_z<-z_scores[1,]
+FeaturePlot(object=NHDF, features = "H2_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Injury Response
+```{r}
+DefaultAssay(NHDF) <- "SCT"
+expdata <- GetAssayData(NHDF)
+Pop1 <- c("MT1-2","CCL2","CXCL1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHDF@meta.data$InjuryResponse_z<-z_scores[1,]
+FeaturePlot(object=NHDF, features = "InjuryResponse_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Myofibroblast
+```{r}
+DefaultAssay(NHDF) <- "SCT"
+expdata <- GetAssayData(NHDF)
+Pop1 <- c("ACTA2","CTHRC1","POSTN","FAP")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHDF@meta.data$Myofibroblast_z<-z_scores[1,]
+FeaturePlot(object=NHDF, features = "Myofibroblast_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Matrifibrocyte
+```{r}
+DefaultAssay(NHDF) <- "SCT"
+expdata <- GetAssayData(NHDF)
+Pop1 <- c("COMP","CHAD","CLIP2")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHDF@meta.data$Matrifibrocyte_z<-z_scores[1,]
+FeaturePlot(object=NHDF, features = "Matrifibrocyte_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Late Resolution
+```{r}
+DefaultAssay(NHDF) <- "SCT"
+expdata <- GetAssayData(NHDF)
+Pop1 <- c("COL8A1","MEOX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+NHDF@meta.data$LateResolution_z<-z_scores[1,]
+FeaturePlot(object=NHDF, features = "LateResolution_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+NHDF$group <- factor(NHDF$group, levels = c("NHDF_72h_TGFb", "NHDF_72h_IL1b", "NHDF_72h_Control"))
+```
+
+```{r}
+VlnPlot(NHDF, features = c("H1_z","H2_z","InjuryResponse_z","Myofibroblast_z","Matrifibrocyte_z"), group.by = "group", pt.size = 0, stack = TRUE, cols = pal_npg(palette = c("nrc"), alpha = 1)(5)) + NoLegend()
+```
+
+
+
+# Fibroblast State Signatures from Brandom/Milena's Paper
+# Homeostasis
+```{r}
+DefaultAssay(iHCF) <- "SCT"
+expdata <- GetAssayData(iHCF)
+Pop1 <- c("COL1A1","PDGFRA","VIM","DCN")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+iHCF@meta.data$H1_z<-z_scores[1,]
+FeaturePlot(object=iHCF, features = "H1_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+#H2
+```{r}
+DefaultAssay(iHCF) <- "SCT"
+expdata <- GetAssayData(iHCF)
+Pop1 <- c("WIF1","DKK3","SFRP2","FRZB")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+iHCF@meta.data$H2_z<-z_scores[1,]
+FeaturePlot(object=iHCF, features = "H2_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Injury Response
+```{r}
+DefaultAssay(iHCF) <- "SCT"
+expdata <- GetAssayData(iHCF)
+Pop1 <- c("MT1-2","CCL2","CXCL1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+iHCF@meta.data$InjuryResponse_z<-z_scores[1,]
+FeaturePlot(object=iHCF, features = "InjuryResponse_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Myofibroblast
+```{r}
+DefaultAssay(iHCF) <- "SCT"
+expdata <- GetAssayData(iHCF)
+Pop1 <- c("ACTA2","CTHRC1","POSTN","FAP")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+iHCF@meta.data$Myofibroblast_z<-z_scores[1,]
+FeaturePlot(object=iHCF, features = "Myofibroblast_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Matrifibrocyte
+```{r}
+DefaultAssay(iHCF) <- "SCT"
+expdata <- GetAssayData(iHCF)
+Pop1 <- c("COMP","CHAD","CLIP2")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+iHCF@meta.data$Matrifibrocyte_z<-z_scores[1,]
+FeaturePlot(object=iHCF, features = "Matrifibrocyte_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+# Late Resolution
+```{r}
+DefaultAssay(iHCF) <- "SCT"
+expdata <- GetAssayData(iHCF)
+Pop1 <- c("COL8A1","MEOX1")
+pops<-list(Pop1)
+#Z-Scores
+z_scores<-NULL
+
+for (i in 1:length(pops)) {
+genes <- pops[[i]]
+zz <- which(tolower(rownames(expdata)) %in% tolower(genes))
+av <- numeric(ncol(expdata))
+
+geneExp <- as.matrix(expdata[zz, ])
+geneExp <- t(scale(t(geneExp)))
+geneExp[is.nan(geneExp)] <- 0
+z_scores <- rbind(z_scores,(av + colSums(geneExp) / length(zz)))
+}
+iHCF@meta.data$LateResolution_z<-z_scores[1,]
+FeaturePlot(object=iHCF, features = "LateResolution_z",pt.size=.5, reduction = 'umap') + scale_color_gradientn(colors=c("blue","turquoise2","yellow","red","red4"), oob=scales::squish, limits=c(0,1))
+```
+
+```{r}
+iHCF$group <- factor(iHCF$group, levels = c("iHCF_72h_TGFb", "iHCF_72h_IL1b", "iHCF_72h_Control"))
+```
+
+```{r}
+VlnPlot(iHCF, features = c("H1_z","H2_z","InjuryResponse_z","Myofibroblast_z","Matrifibrocyte_z"), group.by = "group", pt.size = 0, stack = TRUE, cols = pal_npg(palette = c("nrc"), alpha = 1)(5)) + NoLegend()
+```
+
+```{r}
+NHCF <- readRDS("./NHCF/mapping/NHCF_mapped.rds")
+NHDF <- readRDS("./NHDF/mapping/NHDF_mapped.rds")
+iHCF <- readRDS("./iHCF/mapping/iHCF_mapped.rds")
+```
+
+```{r}
+VlnPlot(NHCF, features = c("predicted.celltype.l1.score"), group.by = "predicted.celltype.l1", pt.size = 0, cols = c("#D51F26","#272E6A","#208A42","#89288F","#C06CAB","#D8A767","#89C75F")) + NoLegend()
+```
+
+```{r}
+VlnPlot(NHDF, features = c("predicted.celltype.l1.score"), group.by = "predicted.celltype.l1", pt.size = 0, cols = c("#D51F26","#272E6A","#208A42","#89288F","#FEE500","#8A9FD1","#C06CAB","#D8A767","#90D5E4","#F37B7D")) + NoLegend()
+```
+
+```{r}
+VlnPlot(iHCF, features = c("predicted.celltype.l1.score"), group.by = "predicted.celltype.l1", pt.size = 0, cols = c("#D51F26","#272E6A","#208A42","#89288F","#C06CAB","#D8A767","#90D5E4","#89C75F","#9983BD")) + NoLegend()
+```
+
+```{r}
+mean(NHCF$predicted.celltype.l1.score)
+```
+
+
+```{r}
+mean(NHDF$predicted.celltype.l1.score)
+```
+
+```{r}
+mean(iHCF$predicted.celltype.l1.score)
+```
+
+
+```{r}
+sum(NHCF$predicted.celltype.l1.score > 0.8)/length(NHCF$predicted.celltype.l1.score)
+```
+
+```{r}
+sum(NHDF$predicted.celltype.l1.score > 0.8)/length(NHDF$predicted.celltype.l1.score)
+```
+
+```{r}
+sum(iHCF$predicted.celltype.l1.score > 0.8)/length(iHCF$predicted.celltype.l1.score)
+```
+
+```{r}
+write.csv(NHCF@meta.data, file ="./NHCF_meta.csv", quote = FALSE)
+write.csv(NHDF@meta.data, file ="./NHDF_meta.csv", quote = FALSE)
+write.csv(iHCF@meta.data, file ="./iHCF_meta.csv", quote = FALSE)
+```
+
+```{r}
+write.csv(NHCF@reductions[["ref.umap"]]@cell.embeddings, file ="./NHCF_ref.umap.csv", quote = FALSE)
+write.csv(NHDF@reductions[["ref.umap"]]@cell.embeddings, file ="./NHDF_ref.umap.csv", quote = FALSE)
+write.csv(iHCF@reductions[["ref.umap"]]@cell.embeddings, file ="./iHCF_ref.umap.csv", quote = FALSE)
+```
+
+```{r}
+write.csv(fibroblast@reductions[["umap"]]@cell.embeddings, file ="./human_fibroblast.umap.csv", quote = FALSE)
+```
+
+###### Revisions
+
+# Fibroblast_sampled
+```{r}
+DefaultAssay(global) <- "SCT"
+DefaultAssay(fibroblast) <- "SCT"
+```
+
+```{r}
+Idents(global) <- "annotation.0.1"
+fibroblast_global <- subset(global, idents = "Fibroblast")
+```
+
+```{r}
+fibroblast_sampled <- subset(x = fibroblast_global, downsample = 5000)
+```
+
+```{r}
+anchors_fibroblast_sampled <- FindTransferAnchors(
+  reference = fibroblast,
+  query = fibroblast_sampled,
+  normalization.method = "SCT",
+  reference.reduction = "spca",
+  dims = 1:50
+)
+```
+
+```{r}
+fibroblast_sampled <- MapQuery(
+  anchorset = anchors_fibroblast_sampled,
+  query = fibroblast_sampled,
+  reference = fibroblast,
+  refdata = list(
+    celltype.l1 = "functional.cluster",
+    predicted_CITE = "CITE"
+  ),
+  reference.reduction = "spca", 
+  reduction.model = "umap"
+)
+```
+
+```{r}
+write.csv(fibroblast_sampled@meta.data, file ="./revisions_pos_neg_control/fibroblast_sampled_meta.csv", quote = FALSE)
+```
+
+```{r}
+mean(fibroblast_sampled$predicted.celltype.l1.score)
+```
+
+```{r}
+RidgePlot(fibroblast_sampled, features = "predicted.celltype.l1.score")
+```
+
+
+```{r}
+global <- readRDS("/Users/jamrute/Library/CloudStorage/Box-Box/Macbook_Files/Grad_School/Primary_Projects/Amgen_Heart/Amgen_ICM_CITEseq/Human_CITEseq/global_object/final_global_annotated.rds")
+```
+
+# Endothelium
+```{r}
+Idents(global) <- "annotation.0.1"
+endothelium <- subset(global, idents = "Endothelium")
+```
+
+```{r}
+endothelium_sampled <- subset(x = endothelium, downsample = 5000)
+```
+
+```{r}
+anchors_endothelium_sampled <- FindTransferAnchors(
+  reference = fibroblast,
+  query = endothelium_sampled,
+  normalization.method = "SCT",
+  reference.reduction = "spca",
+  dims = 1:50
+)
+```
+
+```{r}
+endothelium_sampled <- MapQuery(
+  anchorset = anchors_endothelium_sampled,
+  query = endothelium_sampled,
+  reference = fibroblast,
+  refdata = list(
+    celltype.l1 = "functional.cluster",
+    predicted_CITE = "CITE"
+  ),
+  reference.reduction = "spca", 
+  reduction.model = "umap"
+)
+```
+
+```{r}
+write.csv(endothelium_sampled@meta.data, file ="./revisions_pos_neg_control/endothelium_sampled_meta.csv", quote = FALSE)
+```
+
+```{r}
+mean(endothelium_sampled$predicted.celltype.l1.score)
+```
+
+```{r}
+RidgePlot(endothelium_sampled, features = "predicted.celltype.l1.score")
+```
+
+```{r}
+saveRDS(fibroblast_sampled, "./revisions_pos_neg_control/fibroblast_sampled.rds")
+saveRDS(endothelium_sampled, "./revisions_pos_neg_control/endothelium_sampled.rds")
+```
+
+
+# Myeloid
+```{r}
+Idents(global) <- "annotation.0.1"
+myeloid <- subset(global, idents = "Myeloid")
+```
+
+```{r}
+myeloid_sampled <- subset(x = myeloid, downsample = 5000)
+```
+
+```{r}
+anchors_myeloid_sampled <- FindTransferAnchors(
+  reference = fibroblast,
+  query = myeloid_sampled,
+  normalization.method = "SCT",
+  reference.reduction = "spca",
+  dims = 1:50
+)
+```
+
+```{r}
+myeloid_sampled <- MapQuery(
+  anchorset = anchors_myeloid_sampled,
+  query = myeloid_sampled,
+  reference = fibroblast,
+  refdata = list(
+    celltype.l1 = "functional.cluster",
+    predicted_CITE = "CITE"
+  ),
+  reference.reduction = "spca", 
+  reduction.model = "umap"
+)
+```
+
+```{r}
+write.csv(myeloid_sampled@meta.data, file ="./revisions_pos_neg_control/myeloid_sampled_meta.csv", quote = FALSE)
+```
+
+```{r}
+mean(myeloid_sampled$predicted.celltype.l1.score)
+```
+
+```{r}
+RidgePlot(myeloid_sampled, features = "predicted.celltype.l1.score")
+```
+
+```{r}
+saveRDS(endothelium_sampled, "./revisions_pos_neg_control/endothelium_sampled.rds")
+```
+
+
